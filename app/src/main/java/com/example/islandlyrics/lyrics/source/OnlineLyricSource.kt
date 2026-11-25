@@ -39,6 +39,7 @@ import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
@@ -66,6 +67,7 @@ class OnlineLyricSource(private val context: Context) {
     private val cacheStore = OnlineLyricCacheStore(context)
     private val identityCacheStore = TrackIdentityCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
+    private var importedJob: Job? = null
     private var fetchJob: Job? = null
     private var reapplyJob: Job? = null
 
@@ -73,6 +75,13 @@ class OnlineLyricSource(private val context: Context) {
     private var pendingTitle  = ""
     private var pendingArtist = ""
     private var pendingPackageName = ""
+
+    @Volatile
+    private var lastResolvedMatchedDurationMs: Long? = null
+
+    fun isFetching(): Boolean = fetchJob?.isActive == true
+
+    fun lastMatchedDurationMs(): Long? = lastResolvedMatchedDurationMs
 
     private suspend fun resolveQuery(
         packageName: String,
@@ -101,11 +110,11 @@ class OnlineLyricSource(private val context: Context) {
     }
 
     fun fetchImportedFor(metadata: LyricRepository.MediaInfo, onResolve: (Boolean) -> Unit) {
-        fetchJob?.cancel()
-        fetchJob = null
+        importedJob?.cancel()
+        importedJob = null
         val rule = ParserRuleHelper.getRuleForPackage(context, metadata.packageName)
             ?: ParserRuleHelper.createDefaultRule(metadata.packageName)
-        fetchJob = scope.launch {
+        importedJob = scope.launch {
             try {
                 val lookup = withContext(Dispatchers.IO) {
                     if (!cacheStore.hasImportedLyrics()) null else {
@@ -151,7 +160,13 @@ class OnlineLyricSource(private val context: Context) {
      * Triggers an online lyric fetch for the given track.
      * A concurrent fetch for a previous track is cancelled automatically.
      */
-    fun fetchFor(title: String, artist: String, packageName: String, onResolve: ((found: Boolean) -> Unit)? = null) {
+    fun fetchFor(
+        title: String,
+        artist: String,
+        packageName: String,
+        forceRefresh: Boolean = false,
+        onResolve: ((found: Boolean) -> Unit)? = null
+    ) {
         if (OfflineModeManager.isEnabled(context)) {
             val metadata = LyricRepository.getInstance().liveMetadata.value
             if (metadata?.packageName == packageName) {
@@ -202,9 +217,19 @@ class OnlineLyricSource(private val context: Context) {
                 pendingTitle = queryTitle
                 pendingArtist = queryArtist
                 pendingPackageName = packageName
-                AppLogger.getInstance().i(TAG, "🚀 Online fetch: $queryTitle - $queryArtist [$packageName]")
-                val metadata = LyricRepository.getInstance().liveMetadata.value
-                val cacheHit = if (metadata?.packageName == packageName) {
+                // If the player's first metadata frame arrived with duration=0, wait
+                // briefly inside this coroutine so a second frame carrying real
+                // duration/album/mediaId is picked up atomically without race conditions.
+                var metadata = LyricRepository.getInstance().liveMetadata.value
+                if (metadata?.packageName == packageName && metadata.duration <= 0L) {
+                    delay(180L)
+                    val refreshed = LyricRepository.getInstance().liveMetadata.value
+                    if (refreshed != null && sameLyricRequestTrack(metadata, refreshed)) {
+                        metadata = refreshed
+                    }
+                }
+                AppLogger.getInstance().i(TAG, "🚀 Online fetch: $queryTitle - $queryArtist [$packageName] dur=${metadata?.duration ?: 0L}")
+                val cacheHit = if (!forceRefresh && metadata?.packageName == packageName) {
                     withContext(Dispatchers.IO) {
                         cacheStore.getCachedLyric(metadata, queryTitle, queryArtist)
                     }
@@ -213,6 +238,7 @@ class OnlineLyricSource(private val context: Context) {
                 }
 
                 if (cacheHit != null) {
+                    lastResolvedMatchedDurationMs = cacheHit.result.matchedDurationMs
                     AppLogger.getInstance().i(
                         TAG,
                         "♻️ Online lyric cache hit [${cacheHit.result.api}] custom=${cacheHit.hasCustomMatch}"
@@ -325,9 +351,12 @@ class OnlineLyricSource(private val context: Context) {
                         attempts = outcome.attempts,
                         rule = rule,
                         targetTitle = queryTitle,
-                        targetArtist = queryArtist
+                        targetArtist = queryArtist,
+                        targetAlbum = metadata?.album.orEmpty(),
+                        targetDurationMs = metadata?.duration ?: 0L
                     )
                 }
+                lastResolvedMatchedDurationMs = result?.matchedDurationMs
 
                 // 进程内抓取快照：保留所有源的 attempts 与最佳结果，供在线歌词重匹配页直接填充
                 OnlineLyricFetchSnapshotStore.save(
@@ -460,6 +489,8 @@ class OnlineLyricSource(private val context: Context) {
 
     /** Cancel any in-flight fetch immediately (call on song change or service stop). */
     fun cancel() {
+        importedJob?.cancel()
+        importedJob = null
         fetchJob?.cancel()
         fetchJob = null
         reapplyJob?.cancel()

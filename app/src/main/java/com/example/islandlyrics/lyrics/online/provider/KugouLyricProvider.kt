@@ -49,7 +49,8 @@ internal class KugouLyricProvider(
         title: String,
         artist: String,
         album: String = "",
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        versionReferenceTitle: String = title
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
@@ -74,9 +75,28 @@ internal class KugouLyricProvider(
                         infoArray.optJSONObject(index)?.let { add(KugouSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(searchCandidates, title, artist, album, durationMs)
-                    ?: return@withContext null
-                fetchById(best.song.optString("hash", ""), best)
+                val topCandidates = CandidateMatcher.pickTopCandidates(
+                    searchCandidates,
+                    title,
+                    artist,
+                    album,
+                    durationMs,
+                    limit = 2,
+                    versionReferenceTitle = versionReferenceTitle
+                )
+                if (topCandidates.isEmpty()) return@withContext null
+
+                var firstErrorResult: OnlineLyricFetcher.LyricResult? = null
+                for (candidate in topCandidates) {
+                    val result = fetchById(candidate.song.optString("hash", ""), candidate)
+                    if (result != null && !result.parsedLines.isNullOrEmpty()) {
+                        return@withContext result
+                    }
+                    if (firstErrorResult == null && result != null) {
+                        firstErrorResult = result
+                    }
+                }
+                firstErrorResult
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "Kugou API错误: ${e.message}")
                 null
@@ -145,57 +165,80 @@ internal class KugouLyricProvider(
                     )
                 }
 
-                val lyricInfo = candidates.getJSONObject(0)
-                var lyricEncoded = lyricInfo.optString("content", "")
-                if (lyricEncoded.isEmpty()) {
-                    val id = lyricInfo.optString("id", "")
-                    val accessKey = lyricInfo.optString("accesskey", "")
-                    if (id.isNotEmpty() && accessKey.isNotEmpty()) {
-                        val downloadUrl = "https://lyrics.kugou.com/download?ver=1&client=pc&id=$id&accesskey=$accessKey&fmt=krc&charset=utf8"
-                        val downloadResponse = httpClient.get(downloadUrl)
-                        if (downloadResponse != null) {
-                            try {
-                                val downloadJson = JSONObject(downloadResponse)
-                                lyricEncoded = downloadJson.optString("content", "")
-                            } catch (e: Exception) {
-                                AppLogger.getInstance().log("OnlineLyric", "Kugou下载响应解析失败: ${e.message}")
+                val rankedLyricInfos = buildList {
+                    for (index in 0 until candidates.length()) {
+                        candidates.optJSONObject(index)?.let(::add)
+                    }
+                }.sortedWith(
+                    compareByDescending<JSONObject> { it.optInt("score", 0) }
+                        .thenBy { info ->
+                            val candidateDur = info.optLong("duration", 0L)
+                            if (matchedDurationMs != null && matchedDurationMs > 0L && candidateDur > 0L) {
+                                kotlin.math.abs(matchedDurationMs - candidateDur)
+                            } else {
+                                Long.MAX_VALUE / 2
+                            }
+                        }
+                )
+
+                var fallbackPlainResult: OnlineLyricFetcher.LyricResult? = null
+                for (lyricInfo in rankedLyricInfos.take(2)) {
+                    var lyricEncoded = lyricInfo.optString("content", "")
+                    if (lyricEncoded.isEmpty()) {
+                        val id = lyricInfo.optString("id", "")
+                        val accessKey = lyricInfo.optString("accesskey", "")
+                        if (id.isNotEmpty() && accessKey.isNotEmpty()) {
+                            val downloadUrl = "https://lyrics.kugou.com/download?ver=1&client=pc&id=$id&accesskey=$accessKey&fmt=krc&charset=utf8"
+                            val downloadResponse = httpClient.get(downloadUrl)
+                            if (downloadResponse != null) {
+                                try {
+                                    val downloadJson = JSONObject(downloadResponse)
+                                    lyricEncoded = downloadJson.optString("content", "")
+                                } catch (e: Exception) {
+                                    AppLogger.getInstance().log("OnlineLyric", "Kugou下载响应解析失败: ${e.message}")
+                                }
                             }
                         }
                     }
-                }
+                    if (lyricEncoded.isEmpty()) continue
 
-                if (lyricEncoded.isEmpty()) {
-                    return@withContext OnlineLyricFetcher.LyricResult(
+                    val lyricContent = decodeKugouLyric(lyricEncoded)
+                    val hasSyllable = OnlineLyricParser.isWordLevelLyrics(lyricContent)
+                    val parsedLines = if (hasSyllable) {
+                        OnlineLyricParser.parseWordLevelLyrics(lyricContent)
+                    } else {
+                        OnlineLyricParser.parseLrcLyrics(lyricContent)
+                    }
+                    if (parsedLines.isEmpty()) continue
+
+                    val result = OnlineLyricFetcher.LyricResult(
                         "Kugou",
-                        null,
-                        null,
-                        false,
+                        lyricContent,
+                        parsedLines,
+                        parsedLines.any { !it.syllables.isNullOrEmpty() },
                         provider = OnlineLyricProvider.Kugou,
                         matchedTitle = matchedTitle,
                         matchedArtist = matchedArtist,
-                        error = "歌词内容为空"
+                        matchedAlbum = matchedAlbum,
+                        matchedDurationMs = matchedDurationMs,
+                        providerTrackId = providerTrackId
                     )
+                    if (result.hasSyllable) return@withContext result
+                    if (fallbackPlainResult == null) fallbackPlainResult = result
                 }
 
-                val lyricContent = decodeKugouLyric(lyricEncoded)
-                val hasSyllable = OnlineLyricParser.isWordLevelLyrics(lyricContent)
-                val parsedLines = if (hasSyllable) {
-                    OnlineLyricParser.parseWordLevelLyrics(lyricContent)
-                } else {
-                    OnlineLyricParser.parseLrcLyrics(lyricContent)
-                }
-
-                OnlineLyricFetcher.LyricResult(
+                fallbackPlainResult ?: OnlineLyricFetcher.LyricResult(
                     "Kugou",
-                    lyricContent,
-                    parsedLines,
-                    parsedLines.any { !it.syllables.isNullOrEmpty() },
+                    null,
+                    null,
+                    false,
                     provider = OnlineLyricProvider.Kugou,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
                     matchedAlbum = matchedAlbum,
                     matchedDurationMs = matchedDurationMs,
-                    providerTrackId = providerTrackId
+                    providerTrackId = providerTrackId,
+                    error = "歌词内容为空"
                 )
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "Kugou API错误: ${e.message}")

@@ -26,7 +26,7 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 
 internal class OnlineLyricSelector(
-    private val titleCleaner: (String) -> String
+    private val titleCleaner: (String) -> String = CandidateMatcher::cleanTitle
 ) {
     fun selectBestResult(
         attempts: List<OnlineLyricFetcher.ProviderAttempt>,
@@ -35,19 +35,29 @@ internal class OnlineLyricSelector(
         providerOrder: List<OnlineLyricProvider>,
         useSmartSelection: Boolean,
         targetAlbum: String = "",
-        targetDurationMs: Long = 0L
+        targetDurationMs: Long = 0L,
+        versionReferenceTitle: String = targetTitle
     ): OnlineLyricFetcher.LyricResult? {
-        attempts.mapNotNull { it.result }.forEach {
-            annotateIdentity(it, targetTitle, targetArtist, targetAlbum, targetDurationMs)
+        val assessments = IdentityMap()
+        attempts.mapNotNull { it.result }.forEach { result ->
+            assessments[result] = annotateIdentity(
+                result = result,
+                targetTitle = targetTitle,
+                targetArtist = targetArtist,
+                targetAlbum = targetAlbum,
+                targetDurationMs = targetDurationMs,
+                versionReferenceTitle = versionReferenceTitle
+            )
         }
         val usableResults = attempts.mapNotNull { it.result }
-            .filter {
-                isUsableResult(it) && isIdentityAcceptable(
-                    it,
-                    targetTitle,
-                    targetArtist,
-                    targetAlbum,
-                    targetDurationMs
+            .filter { result ->
+                isUsableResult(result) && isIdentityAcceptable(
+                    result = result,
+                    assessment = assessments[result],
+                    targetTitle = targetTitle,
+                    targetAlbum = targetAlbum,
+                    targetDurationMs = targetDurationMs,
+                    versionReferenceTitle = versionReferenceTitle
                 )
             }
 
@@ -65,26 +75,22 @@ internal class OnlineLyricSelector(
         val results = attempts.mapNotNull { it.result }
         for (result in results) {
             result.score = buildQualityScore(
-                result,
-                targetTitle,
-                targetArtist,
-                targetAlbum,
-                targetDurationMs
+                result = result,
+                targetTitle = targetTitle,
+                targetArtist = targetArtist,
+                targetAlbum = targetAlbum,
+                targetDurationMs = targetDurationMs,
+                versionReferenceTitle = versionReferenceTitle,
+                cachedAssessment = assessments[result]
             )
         }
 
-        return results
-            .filter {
-                isUsableResult(it) && isIdentityAcceptable(
-                    it,
-                    targetTitle,
-                    targetArtist,
-                    targetAlbum,
-                    targetDurationMs
-                )
-            }
+        return usableResults
             .sortedWith(
-                compareByDescending<OnlineLyricFetcher.LyricResult> { it.score }
+                compareByDescending<OnlineLyricFetcher.LyricResult> {
+                    assessments[it]?.tier ?: 0
+                }
+                    .thenByDescending { it.score }
                     .thenBy { providerPriority[it.provider] ?: Int.MAX_VALUE }
                     .thenByDescending { it.hasSyllable }
             )
@@ -97,45 +103,101 @@ internal class OnlineLyricSelector(
     }
 
     /**
-     * Used by the fetch race to avoid treating any parseable lyric as a
-     * trustworthy early result. Providers that cannot expose candidate
-     * metadata remain compatible for normal title-based queries, while the
-     * cross-language artist-only fallback requires identity evidence.
+     * True when [result] has strong verified identity evidence suitable for
+     * race early-completion checks.
      */
     internal fun isPotentiallyMatching(
         result: OnlineLyricFetcher.LyricResult?,
         targetTitle: String,
         targetArtist: String,
         targetAlbum: String,
-        targetDurationMs: Long
+        targetDurationMs: Long,
+        versionReferenceTitle: String = targetTitle
     ): Boolean {
         if (!isUsableResult(result)) return false
         val value = result ?: return false
-        val hasMetadata = listOf(
-            value.matchedTitle,
-            value.matchedArtist,
-            value.matchedAlbum,
-            value.matchedDurationMs?.toString(),
-            value.providerTrackId,
-            value.isrc
-        ).any { !it.isNullOrBlank() }
-        // Legacy endpoints without candidate metadata can still be selected
-        // after the race completes, but must not trigger early cancellation.
-        if (!hasMetadata) return false
-        if (!isIdentityAcceptable(
-            value,
-            targetTitle,
-            targetArtist,
-            targetAlbum,
-            targetDurationMs
-        )) return false
-        return identityScore(
-            value,
-            targetTitle,
-            targetArtist,
-            targetAlbum,
-            targetDurationMs
-        ) >= MIN_EARLY_IDENTITY_SCORE
+        if (!hasCandidateMetadata(value)) return false
+        val assessment = assessCandidate(
+            result = value,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        )
+        if (!assessment.acceptable) return false
+        return assessment.score >= MIN_EARLY_IDENTITY_SCORE && assessment.tier >= 2
+    }
+
+    internal fun isAcceptableMatch(
+        result: OnlineLyricFetcher.LyricResult?,
+        targetTitle: String,
+        targetArtist: String,
+        targetAlbum: String,
+        targetDurationMs: Long,
+        versionReferenceTitle: String = targetTitle
+    ): Boolean {
+        if (!isUsableResult(result)) return false
+        val value = result ?: return false
+        if (!hasCandidateMetadata(value)) return false
+        return assessCandidate(
+            result = value,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        ).acceptable
+    }
+
+    /**
+     * Used by the smart race to decide whether a fast result is already
+     * high-confidence enough to start the short grace window. Word-level
+     * results qualify immediately once identity is strong.
+     */
+    internal fun isHighConfidenceSyllableMatch(
+        result: OnlineLyricFetcher.LyricResult?,
+        targetTitle: String,
+        targetArtist: String,
+        targetAlbum: String,
+        targetDurationMs: Long,
+        versionReferenceTitle: String = targetTitle
+    ): Boolean {
+        val value = result ?: return false
+        if (!value.hasSyllable) return false
+        return isPotentiallyMatching(
+            result = value,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        )
+    }
+
+    /**
+     * True when the exact-query batch already found a strong identity match so
+     * expensive fallback variants (clean_title / apple_alias) can be skipped.
+     */
+    internal fun isStrongExactMatch(
+        result: OnlineLyricFetcher.LyricResult?,
+        targetTitle: String,
+        targetArtist: String,
+        targetAlbum: String,
+        targetDurationMs: Long,
+        versionReferenceTitle: String = targetTitle
+    ): Boolean {
+        val value = result ?: return false
+        if (!isUsableResult(value) || !hasCandidateMetadata(value)) return false
+        val assessment = assessCandidate(
+            result = value,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        )
+        return assessment.acceptable && assessment.tier >= 3
     }
 
     internal fun buildQualityScore(
@@ -143,11 +205,20 @@ internal class OnlineLyricSelector(
         targetTitle: String,
         targetArtist: String,
         targetAlbum: String = "",
-        targetDurationMs: Long = 0L
+        targetDurationMs: Long = 0L,
+        versionReferenceTitle: String = targetTitle,
+        cachedAssessment: CandidateMatcher.IdentityAssessment? = null
     ): Int {
         var score = 0
 
-        val identity = annotateIdentity(result, targetTitle, targetArtist, targetAlbum, targetDurationMs)
+        val identity = cachedAssessment ?: annotateIdentity(
+            result = result,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        )
         score += identity.score
         if (!isUsableResult(result)) return score
 
@@ -156,15 +227,17 @@ internal class OnlineLyricSelector(
         val wordLineCount = parsedLines.count { !it.syllables.isNullOrEmpty() }
 
         if (result.hasSyllable || wordLineCount > 0) {
-            score += 42
+            // Once track identity is confirmed (tier >= 2), word-by-word timing
+            // should decisively outscore plain line-level LRC (+72 + 12 vs +24),
+            // while weak substring matches (tier == 1) get a modest bonus so
+            // displayed scores stay aligned with tier priority.
+            score += if (identity.tier >= 2) 72 else 28
+            score += if (identity.tier >= 2) minOf(wordLineCount, 12) else minOf(wordLineCount, 4)
         } else if (lineCount > 0) {
             score += 24
         }
 
         score += minOf(lineCount, 12)
-        if (wordLineCount > 0) {
-            score += minOf(wordLineCount, 10)
-        }
 
         score += when (result.provider) {
             OnlineLyricProvider.QQMusic -> 11
@@ -173,7 +246,8 @@ internal class OnlineLyricSelector(
             OnlineLyricProvider.Lrclib -> 8
             OnlineLyricProvider.LrcApi -> 8
             OnlineLyricProvider.Netease -> 9
-            else -> 3
+            OnlineLyricProvider.AppleMusic -> 11
+            OnlineLyricProvider.Musixmatch -> 9
         }
 
         if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true ||
@@ -185,171 +259,134 @@ internal class OnlineLyricSelector(
         return score
     }
 
-    private data class IdentityAssessment(
-        val score: Int,
-        val evidence: String
-    )
-
     private fun annotateIdentity(
         result: OnlineLyricFetcher.LyricResult,
         targetTitle: String,
         targetArtist: String,
         targetAlbum: String,
-        targetDurationMs: Long
-    ): IdentityAssessment {
-        val hasMetadata = listOf(
-            result.matchedTitle,
-            result.matchedArtist,
-            result.matchedAlbum,
-            result.matchedDurationMs?.toString(),
-            result.providerTrackId,
-            result.isrc
-        ).any { !it.isNullOrBlank() }
-        if (!hasMetadata) {
+        targetDurationMs: Long,
+        versionReferenceTitle: String
+    ): CandidateMatcher.IdentityAssessment {
+        if (!hasCandidateMetadata(result)) {
             result.identityScore = 0
             result.identityEvidence = "legacy-no-metadata"
-            return IdentityAssessment(0, "legacy-no-metadata")
+            return CandidateMatcher.IdentityAssessment(
+                score = 0,
+                titleScore = 0,
+                artistScore = 0,
+                albumScore = 0,
+                durationScore = 0,
+                stableBonus = 0,
+                versionScore = 0,
+                acceptable = isLegacyFallbackAllowed(
+                    targetTitle = targetTitle,
+                    targetAlbum = targetAlbum,
+                    targetDurationMs = targetDurationMs,
+                    versionReferenceTitle = versionReferenceTitle
+                ),
+                evidence = "legacy-no-metadata"
+            )
         }
 
-        val title = scoreTitleMatch(targetTitle, result.matchedTitle)
-        val artist = scoreArtistMatch(targetArtist, result.matchedArtist)
-        val album = scoreAlbumMatch(targetAlbum, result.matchedAlbum)
-        val duration = scoreDurationMatch(targetDurationMs, result.matchedDurationMs)
-        val stable = if (album >= 15 && duration >= 14) 40 else 0
-        val score = title + artist + album + duration + stable
-        val evidence = "title=$title,artist=$artist,album=$album,duration=$duration,stable=$stable"
-        result.identityScore = score
-        result.identityEvidence = evidence
-        return IdentityAssessment(score, evidence)
+        val assessment = assessCandidate(
+            result = result,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            versionReferenceTitle = versionReferenceTitle
+        )
+        result.identityScore = assessment.score
+        result.identityEvidence = assessment.evidence
+        return assessment
+    }
+
+    private fun assessCandidate(
+        result: OnlineLyricFetcher.LyricResult,
+        targetTitle: String,
+        targetArtist: String,
+        targetAlbum: String,
+        targetDurationMs: Long,
+        versionReferenceTitle: String
+    ): CandidateMatcher.IdentityAssessment {
+        // Respect custom titleCleaner if a caller/test injected a non-default cleaner.
+        val cleanedTarget = titleCleaner(targetTitle)
+        val cleanedMatched = result.matchedTitle?.let(titleCleaner)
+        val base = CandidateMatcher.assessIdentity(
+            targetTitle = targetTitle,
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs,
+            matchedTitle = result.matchedTitle,
+            matchedArtist = result.matchedArtist,
+            matchedAlbum = result.matchedAlbum,
+            matchedDurationMs = result.matchedDurationMs,
+            versionReferenceTitle = versionReferenceTitle,
+            missingTitlePenalty = -8
+        )
+        if (base.titleScore >= 20 || cleanedTarget.isBlank() || cleanedMatched.isNullOrBlank()) {
+            return base
+        }
+        val normTarget = MatchNormalizer.normalizeCompact(cleanedTarget)
+        val normMatched = MatchNormalizer.normalizeCompact(cleanedMatched)
+        if (normTarget.isNotBlank() && normTarget == normMatched) {
+            return CandidateMatcher.assessIdentity(
+                targetTitle = cleanedTarget,
+                targetArtist = targetArtist,
+                targetAlbum = targetAlbum,
+                targetDurationMs = targetDurationMs,
+                matchedTitle = cleanedMatched,
+                matchedArtist = result.matchedArtist,
+                matchedAlbum = result.matchedAlbum,
+                matchedDurationMs = result.matchedDurationMs,
+                versionReferenceTitle = versionReferenceTitle,
+                missingTitlePenalty = -8
+            )
+        }
+        return base
     }
 
     private fun isIdentityAcceptable(
         result: OnlineLyricFetcher.LyricResult,
+        assessment: CandidateMatcher.IdentityAssessment?,
         targetTitle: String,
-        targetArtist: String,
         targetAlbum: String,
-        targetDurationMs: Long
+        targetDurationMs: Long,
+        versionReferenceTitle: String
     ): Boolean {
-        val hasMetadata = listOf(
-            result.matchedTitle,
-            result.matchedArtist,
-            result.matchedAlbum,
-            result.matchedDurationMs?.toString(),
-            result.providerTrackId,
-            result.isrc
-        ).any { !it.isNullOrBlank() }
-        if (!hasMetadata) {
-            // A legacy provider without candidate metadata cannot prove that
-            // its lyric belongs to the current track.  Once the player gives
-            // us album or duration evidence, accepting that result turns
-            // unrelated lyric blobs into false positives (especially after
-            // an ISRC alias query).  Keep the old title-only fallback only
-            // when no stronger track identity is available at all.
-            return targetTitle.isNotBlank() &&
-                targetAlbum.isBlank() &&
-                targetDurationMs <= 0L
-        }
-        if (!CandidateMatcher.isDurationCompatible(targetDurationMs, result.matchedDurationMs)) {
-            return false
-        }
-        if (CandidateMatcher.hasVersionConflict(
-                targetTitle,
-                targetAlbum,
-                result.matchedTitle.orEmpty(),
-                result.matchedAlbum
+        if (!hasCandidateMetadata(result)) {
+            return isLegacyFallbackAllowed(
+                targetTitle = targetTitle,
+                targetAlbum = targetAlbum,
+                targetDurationMs = targetDurationMs,
+                versionReferenceTitle = versionReferenceTitle
             )
-        ) {
-            return false
         }
-        return identityScore(result, targetTitle, targetArtist, targetAlbum, targetDurationMs) >= MIN_IDENTITY_SCORE
+        return assessment?.acceptable == true
     }
 
-    private fun identityScore(
-        result: OnlineLyricFetcher.LyricResult,
+    private fun isLegacyFallbackAllowed(
         targetTitle: String,
-        targetArtist: String,
         targetAlbum: String,
-        targetDurationMs: Long
-    ): Int {
-        var score = scoreTitleMatch(targetTitle, result.matchedTitle)
-        score += scoreArtistMatch(targetArtist, result.matchedArtist)
-        val albumScore = scoreAlbumMatch(targetAlbum, result.matchedAlbum)
-        val durationScore = scoreDurationMatch(targetDurationMs, result.matchedDurationMs)
-        score += albumScore
-        score += durationScore
-        if (albumScore >= 15 && durationScore >= 14) score += 40
-        return score
-    }
+        targetDurationMs: Long,
+        versionReferenceTitle: String = targetTitle
+    ): Boolean = targetTitle.isNotBlank() &&
+        targetAlbum.isBlank() &&
+        targetDurationMs <= 0L &&
+        VersionTagDetector.detect(versionReferenceTitle, targetAlbum).isEmpty()
 
-    private fun scoreTitleMatch(targetTitle: String, matchedTitle: String?): Int {
-        if (targetTitle.isBlank()) return 0
-        if (matchedTitle.isNullOrBlank()) return -8
-        if (matchedTitle.equals(targetTitle, ignoreCase = true)) return 36
+    private fun hasCandidateMetadata(result: OnlineLyricFetcher.LyricResult): Boolean = listOf(
+        result.matchedTitle,
+        result.matchedArtist,
+        result.matchedAlbum,
+        result.matchedDurationMs?.toString(),
+        result.providerTrackId,
+        result.isrc
+    ).any { !it.isNullOrBlank() }
 
-        val cleanTarget = titleCleaner(targetTitle).lowercase()
-        val cleanMatched = titleCleaner(matchedTitle).lowercase()
-        return when {
-            cleanTarget.isBlank() || cleanMatched.isBlank() -> -8
-            cleanMatched == cleanTarget -> 20
-            JapaneseRomajiMatcher.areEquivalent(cleanTarget, cleanMatched) -> 24
-            cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
-            else -> -30
-        }
-    }
-
-    private fun scoreAlbumMatch(targetAlbum: String, matchedAlbum: String?): Int {
-        if (targetAlbum.isBlank() || matchedAlbum.isNullOrBlank()) return 0
-        val target = titleCleaner(targetAlbum).lowercase()
-        val matched = titleCleaner(matchedAlbum).lowercase()
-        if (target.isBlank() || matched.isBlank()) return 0
-        return when {
-            target == matched -> 15
-            target.contains(matched) || matched.contains(target) -> 8
-            else -> -8
-        }
-    }
-
-    private fun scoreDurationMatch(targetDurationMs: Long, matchedDurationMs: Long?): Int {
-        if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return 0
-        val delta = kotlin.math.abs(targetDurationMs - matchedDurationMs)
-        return when {
-            delta <= 1_500L -> 20
-            delta <= 3_000L -> 14
-            delta <= 8_000L -> 5
-            else -> -40
-        }
-    }
+    private class IdentityMap : java.util.IdentityHashMap<OnlineLyricFetcher.LyricResult, CandidateMatcher.IdentityAssessment>()
 
     private companion object {
-        private const val MIN_IDENTITY_SCORE = 20
         private const val MIN_EARLY_IDENTITY_SCORE = 50
     }
-
-    private fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {
-        if (targetArtist.isBlank()) return 0
-        if (matchedArtist.isNullOrBlank()) return -4
-
-        val targetTokens = normalizeArtistTokens(targetArtist)
-        val matchedTokens = normalizeArtistTokens(matchedArtist)
-        if (targetTokens.isEmpty() || matchedTokens.isEmpty()) return -4
-
-        val overlap = targetTokens.intersect(matchedTokens).size
-        return when {
-            overlap == 0 -> -18
-            overlap == targetTokens.size && overlap == matchedTokens.size -> 18
-            overlap == targetTokens.size || overlap == matchedTokens.size -> 12
-            else -> 6
-        }
-    }
-
-    private fun normalizeArtistTokens(artist: String): Set<String> {
-        return artist
-            .split("/", "&", ",", "、", " feat. ", " ft. ", " x ", " X ", ";")
-            .map { it.trim().lowercase() }
-            .map { it.replace(Regex("\\s+"), " ") }
-            .filter { it.isNotBlank() }
-            .toSet()
-    }
 }
-
-

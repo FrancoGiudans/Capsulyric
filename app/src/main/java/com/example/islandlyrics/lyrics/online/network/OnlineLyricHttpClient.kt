@@ -48,20 +48,10 @@ internal class OnlineLyricHttpClient(
         headers: Map<String, String> = emptyMap()
     ): String? {
         if (!networkAllowed()) return null
-        return suspendCancellableCoroutine { continuation ->
-            val request = Request.Builder().url(url).apply {
-                headers.forEach { (key, value) -> header(key, value) }
-            }.build()
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    continuation.resume(null)
-                }
-
-                override fun onResponse(call: okhttp3.Call, response: Response) {
-                    continuation.resume(response.body.string())
-                }
-            })
-        }
+        val request = Request.Builder().url(url).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
+        return executeStringCall(request)
     }
 
     /** 同 [get]，但返回状态码 + body，供需要区分 HTTP 错误的调用方使用。 */
@@ -70,17 +60,33 @@ internal class OnlineLyricHttpClient(
         headers: Map<String, String> = emptyMap()
     ): HttpResult? {
         if (!networkAllowed()) return null
+        val request = Request.Builder().url(url).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
         return suspendCancellableCoroutine { continuation ->
-            val request = Request.Builder().url(url).apply {
-                headers.forEach { (key, value) -> header(key, value) }
-            }.build()
-            client.newCall(request).enqueue(object : Callback {
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation {
+                try {
+                    call.cancel()
+                } catch (_: Throwable) {
+                }
+            }
+            call.enqueue(object : Callback {
                 override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    continuation.resume(null)
+                    if (continuation.isActive) {
+                        continuation.resume(null)
+                    }
                 }
 
                 override fun onResponse(call: okhttp3.Call, response: Response) {
-                    continuation.resume(HttpResult(response.code, response.body.string()))
+                    val result = runCatching {
+                        response.use { res ->
+                            HttpResult(res.code, res.body.string())
+                        }
+                    }.getOrNull()
+                    if (continuation.isActive) {
+                        continuation.resume(result)
+                    }
                 }
             })
         }
@@ -89,32 +95,8 @@ internal class OnlineLyricHttpClient(
     suspend fun postForm(
         url: String,
         form: Map<String, String>,
-        headers: Map<String, String> = emptyMap()
-    ): String? {
-        if (!networkAllowed()) return null
-        return suspendCancellableCoroutine { continuation ->
-            val requestBody = FormBody.Builder().apply {
-                form.forEach { (key, value) -> add(key, value) }
-            }.build()
-            val request = Request.Builder().url(url).post(requestBody).apply {
-                headers.forEach { (key, value) -> header(key, value) }
-            }.build()
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    continuation.resume(null)
-                }
-
-                override fun onResponse(call: okhttp3.Call, response: Response) {
-                    continuation.resume(response.body.string())
-                }
-            })
-        }
-    }
-
-    fun postFormBlocking(
-        url: String,
-        form: Map<String, String>,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        requireSuccessful: Boolean = false
     ): String? {
         if (!networkAllowed()) return null
         val requestBody = FormBody.Builder().apply {
@@ -123,11 +105,7 @@ internal class OnlineLyricHttpClient(
         val request = Request.Builder().url(url).post(requestBody).apply {
             headers.forEach { (key, value) -> header(key, value) }
         }.build()
-        return runCatching {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) null else response.body.string()
-            }
-        }.getOrNull()
+        return executeStringCall(request, requireSuccessful = requireSuccessful)
     }
 
     suspend fun postJsonString(
@@ -136,21 +114,41 @@ internal class OnlineLyricHttpClient(
         headers: Map<String, String> = emptyMap()
     ): String? {
         if (!networkAllowed()) return null
-        return suspendCancellableCoroutine { continuation ->
-            val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
-            val request = Request.Builder().url(url).post(requestBody).apply {
-                headers.forEach { (key, value) -> header(key, value) }
-            }.build()
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: okhttp3.Call, e: IOException) {
+        val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder().url(url).post(requestBody).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
+        return executeStringCall(request)
+    }
+
+    private suspend fun executeStringCall(
+        request: Request,
+        requireSuccessful: Boolean = false
+    ): String? = suspendCancellableCoroutine { continuation ->
+        val call = client.newCall(request)
+        continuation.invokeOnCancellation {
+            try {
+                call.cancel()
+            } catch (_: Throwable) {
+            }
+        }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                if (continuation.isActive) {
                     continuation.resume(null)
                 }
+            }
 
-                override fun onResponse(call: okhttp3.Call, response: Response) {
-                    continuation.resume(response.body.string())
+            override fun onResponse(call: okhttp3.Call, response: Response) {
+                val body = runCatching {
+                    response.use { res ->
+                        if (requireSuccessful && !res.isSuccessful) null else res.body.string()
+                    }
+                }.getOrNull()
+                if (continuation.isActive) {
+                    continuation.resume(body)
                 }
-            })
-        }
+            }
+        })
     }
 }
-

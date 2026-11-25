@@ -41,7 +41,8 @@ internal class SodaMusicLyricProvider(
         title: String,
         artist: String,
         album: String = "",
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        versionReferenceTitle: String = title
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
@@ -52,28 +53,42 @@ internal class SodaMusicLyricProvider(
                 val resultGroups = searchJson.optJSONArray("result_groups")
                 if (resultGroups == null || resultGroups.length() == 0) return@withContext null
 
-                var tracks: List<JSONObject> = emptyList()
+                val tracks = mutableListOf<JSONObject>()
                 for (groupIndex in 0 until resultGroups.length()) {
                     val group = resultGroups.optJSONObject(groupIndex) ?: continue
                     val data = group.optJSONArray("data") ?: continue
-                    val groupTracks = mutableListOf<JSONObject>()
                     for (itemIndex in 0 until data.length()) {
                         val item = data.optJSONObject(itemIndex) ?: continue
                         val meta = item.optJSONObject("meta")
                         if (meta?.optString("item_type") != "track") continue
-                        item.optJSONObject("entity")?.optJSONObject("track")?.let { groupTracks.add(it) }
-                    }
-                    if (groupTracks.isNotEmpty()) {
-                        tracks = groupTracks
-                        break
+                        item.optJSONObject("entity")?.optJSONObject("track")?.let { tracks.add(it) }
                     }
                 }
                 if (tracks.isEmpty()) return@withContext null
 
                 val candidates = tracks.map { SodaTrackCandidate(it) }
-                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
-                    ?: return@withContext null
-                fetchById(best.providerTrackId.orEmpty(), best)
+                val topCandidates = CandidateMatcher.pickTopCandidates(
+                    candidates,
+                    title,
+                    artist,
+                    album,
+                    durationMs,
+                    limit = 2,
+                    versionReferenceTitle = versionReferenceTitle
+                )
+                if (topCandidates.isEmpty()) return@withContext null
+
+                var firstErrorResult: OnlineLyricFetcher.LyricResult? = null
+                for (candidate in topCandidates) {
+                    val result = fetchById(candidate.providerTrackId.orEmpty(), candidate)
+                    if (result != null && !result.parsedLines.isNullOrEmpty()) {
+                        return@withContext result
+                    }
+                    if (firstErrorResult == null && result != null) {
+                        firstErrorResult = result
+                    }
+                }
+                firstErrorResult
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "SodaMusic API错误: ${e.message}")
                 null

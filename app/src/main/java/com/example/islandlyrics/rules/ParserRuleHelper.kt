@@ -26,6 +26,7 @@ import android.content.Context
 import androidx.core.content.edit
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import com.example.islandlyrics.lyrics.online.selection.MatchNormalizer
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -456,6 +457,86 @@ object ParserRuleHelper {
             FieldOrder.ARTIST_TITLE -> Triple(part2, part1, true)  // part1=artist, part2=title
             FieldOrder.TITLE_ARTIST -> Triple(part1, part2, true)  // part1=title, part2=artist
         }
+    }
+
+    internal data class TitleArtistResolution(
+        val title: String,
+        val artist: String,
+        val parsed: Boolean
+    )
+
+    private val SUBTITLE_OR_VERSION_SUFFIX_REGEX = Regex(
+        """(?i)(?:^|[\s(\[\-_/])(?:from\s+the\s+first\s+take|the\s+first\s+take|remaster(?:ed)?|live(?:\s+at|\s+in|\s+from|\s+version|\s+ver\.?)?|acoustic|unplugged|remix(?:ed)?|radio\s+(?:edit|version)|instrumental|off[\s-]?vocal|karaoke|cover|single\s+version|album\s+version|original\s+(?:mix|version)|extended(?:\s+(?:mix|version))?|deluxe|bonus\s+track|explicit|clean|mono|stereo|demo|studio\s+version|tv\s*size|short\s*ver\.?|full\s*ver\.?|movie\s*ver\.?|game\s*ver\.?|ver\.?\s*[\w.]*|version|ost|bgm|theme|soundtrack)(?:$|[\s)\]\-_/\d.,!?:;])"""
+    )
+
+    private val CJK_SUBTITLE_SUFFIX_KEYWORDS = listOf(
+        "现场", "演唱会", "纯音乐", "伴奏", "翻唱", "混音", "重混",
+        "不插电", "电台版", "主题曲", "片头曲", "片尾曲", "插曲", "原声"
+    )
+
+    private val PLACEHOLDER_ARTISTS = setOf(
+        "unknown",
+        "<unknown>",
+        "unknown artist",
+        "未知",
+        "未知歌手",
+        "未知艺术家",
+        "null"
+    )
+
+    internal fun isPlaceholderArtist(artist: String?): Boolean {
+        val trimmed = artist?.trim().orEmpty()
+        if (trimmed.isEmpty()) return true
+        return trimmed.lowercase() in PLACEHOLDER_ARTISTS
+    }
+
+    internal fun isVersionOrSubtitleSuffix(value: String): Boolean {
+        val normalized = MatchNormalizer.normalizeText(value)
+        if (normalized.isBlank()) return false
+        if (normalized.startsWith("from ")) return true
+        if (SUBTITLE_OR_VERSION_SUFFIX_REGEX.containsMatchIn(normalized)) return true
+        return CJK_SUBTITLE_SUFFIX_KEYWORDS.any { normalized.contains(it) }
+    }
+
+    /**
+     * Safely resolves Strategy-3 Case A (`rawTitle` containing separator) without
+     * overwriting a valid player-supplied `rawArtist` with a song subtitle such as
+     * `"夜に駆ける - From THE FIRST TAKE"` (artist `"YOASOBI"`).
+     */
+    internal fun resolveTitleMetadata(
+        rawTitle: String,
+        rawArtist: String?,
+        rule: ParserRule
+    ): TitleArtistResolution {
+        val fallbackArtist = rawArtist.orEmpty()
+        val (suspectedTitle, suspectedArtist, ok) = parseWithRule(rawTitle, rule)
+        if (!ok || suspectedTitle.isBlank() || suspectedArtist.isBlank()) {
+            return TitleArtistResolution(rawTitle, fallbackArtist, parsed = false)
+        }
+
+        // Never treat obvious version/edition subtitles (e.g. "From THE FIRST TAKE",
+        // "Remastered 2011", "Live", "Acoustic") as an artist name.
+        if (isVersionOrSubtitleSuffix(suspectedArtist)) {
+            return TitleArtistResolution(rawTitle, fallbackArtist, parsed = false)
+        }
+
+        val hasValidRawArtist = !isPlaceholderArtist(rawArtist)
+        if (hasValidRawArtist) {
+            val trimmedRawArtist = rawArtist!!.trim()
+            // When the player already reports a real artist, only strip a redundant
+            // artist segment from rawTitle if it actually matches rawArtist
+            // (e.g. rawTitle="晴天 - 周杰伦", rawArtist="周杰伦").
+            val matchesExistingArtist = MatchNormalizer
+                .computeArtistOverlap(trimmedRawArtist, suspectedArtist)
+                .hasOverlap
+            return if (matchesExistingArtist) {
+                TitleArtistResolution(suspectedTitle, trimmedRawArtist, parsed = true)
+            } else {
+                TitleArtistResolution(rawTitle, trimmedRawArtist, parsed = false)
+            }
+        }
+
+        return TitleArtistResolution(suspectedTitle, suspectedArtist, parsed = true)
     }
 }
 

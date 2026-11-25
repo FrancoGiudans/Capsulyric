@@ -704,6 +704,26 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
+            if (!useNotificationLyrics) {
+                // Standard MediaSession player (usesCarProtocol = false):
+                // Never treat song switches by the same artist (e.g. when duration is 0)
+                // as dynamic notification lyric lines! Only sanitize redundant title-artist
+                // concatenation when applicable.
+                isDynamicLyricMode = false
+                packageLyricMode.remove(pkg)
+                packageRealTitle.remove(pkg)
+                packageRealArtist.remove(pkg)
+
+                val titleResolution = ParserRuleHelper.resolveTitleMetadata(rawTitle ?: "", rawArtist, rule)
+                if (titleResolution.parsed) {
+                    finalTitle = titleResolution.title
+                    finalArtist = titleResolution.artist
+                }
+
+                packageLastTitle[pkg] = rawTitle
+                packageLastArtist[pkg] = rawArtist
+                packageLastDuration[pkg] = duration
+            } else {
 
             // --- Anti-False-Positive Heuristics ---
             val isInstrumental = rawTitle?.contains("Instrument", ignoreCase = true) == true ||
@@ -807,13 +827,15 @@ class MediaMonitorService : NotificationListenerService() {
                 finalLyric  = rawTitle
             } else {
                 // --- STRATEGY 3: Parse-based detection (fallback for other formats) ---
-                // Case A: Title contains "Artist - Title" (e.g. bluetooth media)
-                val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
-                if (titleParse.third) {
-                    finalTitle  = titleParse.first
-                    finalArtist = titleParse.second
-                } else {
-                    // Case B: Artist contains "Artist - Title" AND Title is lyrics
+                // Case A: Title contains "Artist - Title" / "Title - Artist" (e.g. bluetooth media)
+                // Guard against overwriting a valid player artist with song subtitles such as
+                // "夜に駆ける - From THE FIRST TAKE" (artist "YOASOBI").
+                val titleResolution = ParserRuleHelper.resolveTitleMetadata(rawTitle ?: "", rawArtist, rule)
+                if (titleResolution.parsed) {
+                    finalTitle  = titleResolution.title
+                    finalArtist = titleResolution.artist
+                } else if (useNotificationLyrics) {
+                    // Case B: Artist contains "Artist - Title" AND Title is lyrics (car/notification protocol only)
                     val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
                     if (artistParse.third) {
                         val suspectedTitle  = artistParse.first
@@ -846,6 +868,7 @@ class MediaMonitorService : NotificationListenerService() {
             packageLastArtist[pkg]   = rawArtist
             packageLastDuration[pkg] = duration
             packageLyricMode[pkg]    = isDynamicLyricMode
+            }
         }
 
         if (BuildConfig.DEBUG) {

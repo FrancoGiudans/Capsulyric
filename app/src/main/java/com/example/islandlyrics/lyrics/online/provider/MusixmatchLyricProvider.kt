@@ -63,26 +63,36 @@ internal class MusixmatchLyricProvider(
         }
     }
 
-    suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
-        fetchTrack(title, artist)
+    suspend fun fetch(
+        title: String,
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L
+    ): OnlineLyricFetcher.LyricResult? =
+        fetchTrack(title, artist, album, durationMs)
 
     suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
-        fetchTrack("", "", trackId)
+        fetchTrack("", "", "", 0L, trackId)
 
     private suspend fun fetchTrack(
         title: String,
         artist: String,
+        album: String = "",
+        durationMs: Long = 0L,
         directTrackId: String? = null
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
                 // 1. 搜索曲目
                 val track = if (directTrackId == null) {
-                    val trackResponse = musixmatchGet(
-                        "matcher.track.get" +
-                            "?q_track=${title.encodeURL()}" +
-                            "&q_artist=${artist.encodeURL()}"
-                    ) ?: return@withContext null
+                    val query = buildString {
+                        append("matcher.track.get")
+                        append("?q_track=").append(title.encodeURL())
+                        append("&q_artist=").append(artist.encodeURL())
+                        if (album.isNotBlank()) append("&q_album=").append(album.encodeURL())
+                        if (durationMs > 0L) append("&f_track_length=").append(durationMs / 1000L)
+                    }
+                    val trackResponse = musixmatchGet(query) ?: return@withContext null
 
                     JSONObject(trackResponse)
                         .optJSONObject("message")
@@ -92,8 +102,13 @@ internal class MusixmatchLyricProvider(
                 } else null
                 val trackId = directTrackId ?: track?.optString("track_id", "").orEmpty()
                 if (trackId.isBlank()) return@withContext null
-                val matchedTitle = track?.optString("track_name", "")
-                val matchedArtist = track?.optString("artist_name", "")
+                val matchedTitle = track?.optString("track_name", "")?.takeIf { it.isNotBlank() }
+                val matchedArtist = track?.optString("artist_name", "")?.takeIf { it.isNotBlank() }
+                val matchedAlbum = track?.optString("album_name", "")?.takeIf { it.isNotBlank() }
+                val matchedDurationMs = track?.optLong("track_length", 0L)
+                    ?.takeIf { it > 0L }
+                    ?.times(1000L)
+                val isrc = track?.optString("track_isrc", "")?.takeIf { it.isNotBlank() }
 
                 // 2. 取歌词（richsync 优先）
                 val lyricResponse = musixmatchGet(
@@ -129,7 +144,10 @@ internal class MusixmatchLyricProvider(
                             provider = OnlineLyricProvider.Musixmatch,
                             matchedTitle = matchedTitle,
                             matchedArtist = matchedArtist,
-                            providerTrackId = trackId
+                            matchedAlbum = matchedAlbum,
+                            matchedDurationMs = matchedDurationMs,
+                            providerTrackId = trackId,
+                            isrc = isrc
                         )
                     }
                 }
@@ -153,7 +171,10 @@ internal class MusixmatchLyricProvider(
                             provider = OnlineLyricProvider.Musixmatch,
                             matchedTitle = matchedTitle,
                             matchedArtist = matchedArtist,
-                            providerTrackId = trackId
+                            matchedAlbum = matchedAlbum,
+                            matchedDurationMs = matchedDurationMs,
+                            providerTrackId = trackId,
+                            isrc = isrc
                         )
                     }
                 }

@@ -88,6 +88,193 @@ class OnlineLyricSidecarMergerTest {
         assertEquals("第二句翻译", filtered[1].translation)
     }
 
+    @Test
+    fun doesNotFallbackToCoverRomanizationWhenOriginalHasNoRomanization() {
+        val mainOriginal = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:01.00]あの日見渡した渚を",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 4_000L, "あの日見渡した渚を")
+            ),
+            hasSyllable = true,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "打上花火",
+            matchedArtist = "DAOKO/米津玄师",
+            matchedAlbum = "打上花火",
+            matchedDurationMs = 289_000L,
+            translationLyrics = "[00:01.00]那天眺望过的海岸"
+        )
+        val coverWithRoman = OnlineLyricFetcher.LyricResult(
+            api = "Netease",
+            lyrics = "[00:01.00]あの日見渡した渚を",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 4_000L, "あの日見渡した渚を")
+            ),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.Netease,
+            matchedTitle = "打上花火",
+            matchedArtist = "某翻唱歌手",
+            matchedAlbum = "翻唱合集",
+            matchedDurationMs = 289_000L,
+            romanLyrics = "[00:01.00]cover roma"
+        )
+        val rule = ParserRule(
+            packageName = "test.music",
+            receiveOnlineTranslation = true,
+            receiveOnlineRomanization = true
+        )
+
+        val merged = OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
+            main = mainOriginal,
+            attempts = listOf(attempt(mainOriginal), attempt(coverWithRoman)),
+            rule = rule,
+            targetTitle = "打上花火",
+            targetArtist = "DAOKO × 米津玄師",
+            targetAlbum = "打上花火",
+            targetDurationMs = 289_000L
+        )
+
+        assertEquals("[00:01.00]那天眺望过的海岸", merged.translationLyrics)
+        assertNull(merged.romanLyrics)
+    }
+
+    @Test
+    fun mergesOriginalRomanizationAcrossTraditionalArtistAndMultiplicationSeparator() {
+        val mainOriginal = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:01.00]あの日見渡した渚を",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 4_000L, "あの日見渡した渚を")
+            ),
+            hasSyllable = true,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "打上花火",
+            matchedArtist = "DAOKO/米津玄师",
+            matchedDurationMs = 289_000L,
+            translationLyrics = "[00:01.00]那天眺望过的海岸"
+        )
+        val neteaseOriginalWithRoman = OnlineLyricFetcher.LyricResult(
+            api = "Netease",
+            lyrics = "[00:01.00]あの日見渡した渚を",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 4_000L, "あの日見渡した渚を")
+            ),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.Netease,
+            matchedTitle = "打上花火",
+            matchedArtist = "DAOKO / 米津玄師",
+            matchedDurationMs = 289_500L,
+            romanLyrics = "[00:01.00]a no hi mi wa ta shi ta"
+        )
+        val rule = ParserRule(
+            packageName = "test.music",
+            receiveOnlineTranslation = true,
+            receiveOnlineRomanization = true
+        )
+
+        val merged = OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
+            main = mainOriginal,
+            attempts = listOf(attempt(mainOriginal), attempt(neteaseOriginalWithRoman)),
+            rule = rule,
+            targetTitle = "打上花火",
+            targetArtist = "DAOKO × 米津玄師",
+            targetDurationMs = 289_000L
+        )
+
+        assertEquals("[00:01.00]a no hi mi wa ta shi ta", merged.romanLyrics)
+    }
+
+    @Test
+    fun rejectsSidecarWithLargeDurationDriftAndPreservesArtistsContainingXOrFt() {
+        val main = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:01.00]Lyric",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "Lyric")),
+            hasSyllable = true,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "Cruel Summer",
+            matchedArtist = "Taylor Swift",
+            matchedDurationMs = 178_000L
+        )
+        val driftedSidecar = OnlineLyricFetcher.LyricResult(
+            api = "Netease",
+            lyrics = "[00:01.00]Lyric",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "Lyric")),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.Netease,
+            matchedTitle = "Cruel Summer",
+            matchedArtist = "Taylor Swift",
+            matchedDurationMs = 210_000L,
+            translationLyrics = "[00:01.00]错版翻译"
+        )
+        val alignedSidecar = driftedSidecar.copy(
+            provider = OnlineLyricProvider.Kugou,
+            api = "Kugou",
+            matchedDurationMs = 179_000L,
+            translationLyrics = "[00:01.00]正确翻译"
+        )
+        val rule = ParserRule(
+            packageName = "test.music",
+            receiveOnlineTranslation = true
+        )
+
+        val merged = OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
+            main = main,
+            attempts = listOf(attempt(main), attempt(driftedSidecar), attempt(alignedSidecar)),
+            rule = rule,
+            targetTitle = "Cruel Summer",
+            targetArtist = "Taylor Swift",
+            targetDurationMs = 178_000L
+        )
+
+        assertEquals("[00:01.00]正确翻译", merged.translationLyrics)
+    }
+
+    @Test
+    fun doesNotMergeStudioSidecarsIntoTheFirstTakeMainLyricEvenWithSameDuration() {
+        val tftMain = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:18.00]誰が袖に咲く幻花",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(18_000L, 22_000L, "誰が袖に咲く幻花")),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "残響散歌 - From THE FIRST TAKE",
+            matchedArtist = "Aimer",
+            matchedAlbum = "残響散歌 - From THE FIRST TAKE",
+            matchedDurationMs = 184_952L
+        )
+        val studioSidecar = OnlineLyricFetcher.LyricResult(
+            api = "Netease",
+            lyrics = "[00:01.00]誰が袖に咲く幻花",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 5_000L, "誰が袖に咲く幻花")),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.Netease,
+            matchedTitle = "残響散歌",
+            matchedArtist = "Aimer",
+            matchedAlbum = "残響散歌",
+            matchedDurationMs = 184_000L,
+            translationLyrics = "[00:01.00]错轴录音室版翻译",
+            romanLyrics = "[00:01.00]ta ga so de ni sa ku"
+        )
+        val rule = ParserRule(
+            packageName = "test.music",
+            receiveOnlineTranslation = true,
+            receiveOnlineRomanization = true
+        )
+
+        val merged = OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
+            main = tftMain,
+            attempts = listOf(attempt(tftMain), attempt(studioSidecar)),
+            rule = rule,
+            targetTitle = "残響散歌 - From THE FIRST TAKE",
+            targetArtist = "Aimer",
+            targetDurationMs = 184_952L
+        )
+
+        assertNull(merged.translationLyrics)
+        assertNull(merged.romanLyrics)
+    }
+
     private fun result(
         provider: OnlineLyricProvider,
         api: String,

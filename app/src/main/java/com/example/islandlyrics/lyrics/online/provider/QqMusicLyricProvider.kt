@@ -38,6 +38,8 @@ import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 import android.util.Base64
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -48,7 +50,8 @@ internal class QqMusicLyricProvider(
         title: String,
         artist: String,
         album: String = "",
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        versionReferenceTitle: String = title
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
@@ -84,9 +87,28 @@ internal class QqMusicLyricProvider(
                         songs.optJSONObject(index)?.let { add(QqSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
-                    ?: return@withContext null
-                fetchSong(best)
+                val topCandidates = CandidateMatcher.pickTopCandidates(
+                    candidates,
+                    title,
+                    artist,
+                    album,
+                    durationMs,
+                    limit = 2,
+                    versionReferenceTitle = versionReferenceTitle
+                )
+                if (topCandidates.isEmpty()) return@withContext null
+
+                var firstErrorResult: OnlineLyricFetcher.LyricResult? = null
+                for (candidate in topCandidates) {
+                    val result = fetchSong(candidate)
+                    if (result != null && !result.parsedLines.isNullOrEmpty()) {
+                        return@withContext result
+                    }
+                    if (firstErrorResult == null && result != null) {
+                        firstErrorResult = result
+                    }
+                }
+                firstErrorResult
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "QQMusic API错误: ${e.message}")
                 null
@@ -139,35 +161,42 @@ internal class QqMusicLyricProvider(
                 }
 
                 val callback = "MusicJsonCallback_lrc"
-                val lyricResponse = httpClient.postForm(
-                    url = "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg",
-                    form = linkedMapOf(
-                        "callback" to callback,
-                        "pcachetime" to System.currentTimeMillis().toString(),
-                        "songmid" to songMid,
-                        "g_tk" to "5381",
-                        "jsonpCallback" to callback,
-                        "loginUin" to "0",
-                        "hostUin" to "0",
-                        "format" to "jsonp",
-                        "inCharset" to "utf8",
-                        "outCharset" to "utf8",
-                        "notice" to "0",
-                        "platform" to "yqq",
-                        "needNewCode" to "0"
-                    ),
-                    headers = qqHeaders("https://y.qq.com/")
-                ) ?: return@withContext null
+                val (lyricResponse, downloadExtras) = coroutineScope {
+                    val lrcDeferred = async {
+                        httpClient.postForm(
+                            url = "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg",
+                            form = linkedMapOf(
+                                "callback" to callback,
+                                "pcachetime" to System.currentTimeMillis().toString(),
+                                "songmid" to songMid,
+                                "g_tk" to "5381",
+                                "jsonpCallback" to callback,
+                                "loginUin" to "0",
+                                "hostUin" to "0",
+                                "format" to "jsonp",
+                                "inCharset" to "utf8",
+                                "outCharset" to "utf8",
+                                "notice" to "0",
+                                "platform" to "yqq",
+                                "needNewCode" to "0"
+                            ),
+                            headers = qqHeaders("https://y.qq.com/")
+                        )
+                    }
+                    val extrasDeferred = async { fetchLyricExtras(songId) }
+                    lrcDeferred.await() to extrasDeferred.await()
+                }
 
-                val lyricJsonText = unwrapJsonp(callback, lyricResponse) ?: return@withContext null
-                val lyricJson = JSONObject(lyricJsonText)
-                val lyricContent = decodeBase64Text(lyricJson.optString("lyric", ""))
-                val downloadExtras = fetchLyricExtras(songId)
+                val lyricJson = lyricResponse
+                    ?.let { unwrapJsonp(callback, it) }
+                    ?.let { runCatching { JSONObject(it) }.getOrNull() }
+                val lyricContent = lyricJson?.let { decodeBase64Text(it.optString("lyric", "")) }.orEmpty()
                 val transContent = downloadExtras.translation.ifBlank {
-                    decodeBase64Text(lyricJson.optString("trans", ""))
+                    lyricJson?.let { decodeBase64Text(it.optString("trans", "")) }.orEmpty()
                 }
                 val romanContent = downloadExtras.romanization
-                val mergedContent = lyricContent.ifBlank { transContent }
+                val qrcContent = downloadExtras.qrcContent
+                val mergedContent = lyricContent.ifBlank { transContent }.ifBlank { qrcContent }
 
                 if (mergedContent.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -188,7 +217,6 @@ internal class QqMusicLyricProvider(
                 // QRC 逐字优先：lyric_download.fcg 的 content 字段解密后若为 QRC 形态则用逐字解析；
                 // 若非 QRC 但含 [startMs,durMs] 逐行段，同样优先于 fcg_query_lyric_new 的普通 LRC。
                 // 若 QRC/逐行解析得到 0 行，平滑降级为普通 LRC 解析，保证有效歌词不被丢弃。
-                val qrcContent = downloadExtras.qrcContent
                 val hasSyllable = QrcParser.isQrcContent(qrcContent)
                 val lineSegmentedContent = qrcContent.takeIf {
                     !hasSyllable && OnlineLyricParser.hasQqLineSegments(it)

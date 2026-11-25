@@ -127,6 +127,10 @@ internal class AppleMusicLyricProvider {
     // 共享客户端 followRedirects(false) 会抓不到 index*.js 导致 accessToken 为空 -> catalog 401）
     private val httpClient: OnlineLyricHttpClient = OnlineLyricHttpClient(
         OkHttpClient.Builder()
+            .dispatcher(okhttp3.Dispatcher().apply {
+                maxRequests = 64
+                maxRequestsPerHost = 12
+            })
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .followRedirects(true)
@@ -141,8 +145,17 @@ internal class AppleMusicLyricProvider {
         album: String = "",
         durationMs: Long = 0L,
         storefront: String? = null,
-        language: String? = null
-    ): OnlineLyricFetcher.LyricResult? = fetchTrack(title, artist, album, durationMs, storefront, language)
+        language: String? = null,
+        versionReferenceTitle: String = title
+    ): OnlineLyricFetcher.LyricResult? = fetchTrack(
+        title = title,
+        artist = artist,
+        album = album,
+        durationMs = durationMs,
+        storefront = storefront,
+        language = language,
+        versionReferenceTitle = versionReferenceTitle
+    )
 
     suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
         fetchTrack("", "", directTrackId = trackId)
@@ -154,7 +167,8 @@ internal class AppleMusicLyricProvider {
         durationMs: Long = 0L,
         storefront: String? = null,
         language: String? = null,
-        directTrackId: String? = null
+        directTrackId: String? = null,
+        versionReferenceTitle: String = title
     ): OnlineLyricFetcher.LyricResult? = withContext(Dispatchers.IO) {
         try {
             // Apple 的歌词接口要求登录态（media-user-token），匿名模式只能搜索到歌曲、拿不到歌词
@@ -193,10 +207,12 @@ internal class AppleMusicLyricProvider {
                     "mut=${AppleMusicStateCache.mediaUserToken.take(6)}..."
             )
 
-            // 1. 搜索（多候选）
-            val best = if (directTrackId == null) {
+            // 1. 搜索（多候选，最多顺延尝试前 2 条以跳过无歌词版本）
+            val candidatesToTry: List<Pair<String, AppleSongCandidate?>> = if (directTrackId == null) {
+                val searchTerm = ProviderSearchTerm.build(title, artist, album)
+                if (searchTerm.isBlank()) return@withContext null
                 val searchUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/search" +
-                    "?term=${"$title $artist".trim().encodeURL()}" +
+                    "?term=${searchTerm.encodeURL()}" +
                     "&types=songs&limit=20" +
                     "&l=${effectiveLanguage.encodeURL()}"
                 val searchResponse = getWithTokenRetry(searchUrl) ?: return@withContext null
@@ -212,73 +228,93 @@ internal class AppleMusicLyricProvider {
                         songs.optJSONObject(index)?.let { add(AppleSongCandidate(it)) }
                     }
                 }
-                CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
-                    ?: return@withContext null
-            } else null
-            val songId = directTrackId ?: best?.providerTrackId.orEmpty()
-            if (songId.isBlank()) return@withContext null
-
-            // 2. 歌词（逐字 TTML）
-            val lyricUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId" +
-                "?include[songs]=syllable-lyrics" +
-                "&l=${effectiveLanguage.encodeURL()}" +
-                "&extend=ttmlLocalizations"
-            val lyricResponse = getWithTokenRetry(lyricUrl) ?: return@withContext null
-            val matched = best ?: JSONObject(lyricResponse).optJSONArray("data")?.optJSONObject(0)
-                ?.let(::AppleSongCandidate)
-            val matchedTitle = matched?.matchedTitle
-            val matchedArtist = matched?.matchedArtist
-            val matchedAlbum = matched?.matchedAlbum
-            val matchedDurationMs = matched?.matchedDurationMs
-            val providerTrackId = songId
-            val isrc = matched?.isrc
-
-            var ttml = extractTtml(lyricResponse)
-            if (ttml.isBlank()) {
-                // 回退：子资源端点（apple-music-downloader 等带 MUT 获取歌词的常用方式）
-                val subUrls = listOf(
-                    "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId/syllable-lyrics" +
-                        "?l=${effectiveLanguage.encodeURL()}",
-                    "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId/lyrics" +
-                        "?l=${effectiveLanguage.encodeURL()}"
+                CandidateMatcher.pickTopCandidates(
+                    candidates,
+                    title,
+                    artist,
+                    album,
+                    durationMs,
+                    limit = 2,
+                    versionReferenceTitle = versionReferenceTitle
                 )
-                for (subUrl in subUrls) {
-                    val subResponse = getWithTokenRetry(subUrl) ?: continue
-                    ttml = extractTtml(subResponse)
-                    if (ttml.isNotBlank()) break
+                    .mapNotNull { candidate ->
+                        candidate.providerTrackId?.takeIf { it.isNotBlank() }?.let { it to candidate }
+                    }
+            } else {
+                listOf(directTrackId to null)
+            }
+            if (candidatesToTry.isEmpty()) return@withContext null
+
+            var firstErrorResult: OnlineLyricFetcher.LyricResult? = null
+            for ((songId, best) in candidatesToTry) {
+                // 2. 歌词（逐字 TTML）
+                val lyricUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId" +
+                    "?include[songs]=syllable-lyrics" +
+                    "&l=${effectiveLanguage.encodeURL()}" +
+                    "&extend=ttmlLocalizations"
+                val lyricResponse = getWithTokenRetry(lyricUrl) ?: continue
+                val matched = best ?: JSONObject(lyricResponse).optJSONArray("data")?.optJSONObject(0)
+                    ?.let(::AppleSongCandidate)
+                val matchedTitle = matched?.matchedTitle
+                val matchedArtist = matched?.matchedArtist
+                val matchedAlbum = matched?.matchedAlbum
+                val matchedDurationMs = matched?.matchedDurationMs
+                val providerTrackId = songId
+                val isrc = matched?.isrc
+
+                var ttml = extractTtml(lyricResponse)
+                if (ttml.isBlank()) {
+                    // 回退：子资源端点（apple-music-downloader 等带 MUT 获取歌词的常用方式）
+                    val subUrls = listOf(
+                        "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId/syllable-lyrics" +
+                            "?l=${effectiveLanguage.encodeURL()}",
+                        "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/songs/$songId/lyrics" +
+                            "?l=${effectiveLanguage.encodeURL()}"
+                    )
+                    for (subUrl in subUrls) {
+                        val subResponse = getWithTokenRetry(subUrl) ?: continue
+                        ttml = extractTtml(subResponse)
+                        if (ttml.isNotBlank()) break
+                    }
+                }
+                if (ttml.isBlank()) {
+                    if (firstErrorResult == null) {
+                        firstErrorResult = OnlineLyricFetcher.LyricResult(
+                            api = "AppleMusic",
+                            lyrics = null,
+                            parsedLines = null,
+                            hasSyllable = false,
+                            provider = OnlineLyricProvider.AppleMusic,
+                            matchedTitle = matchedTitle,
+                            matchedArtist = matchedArtist,
+                            matchedAlbum = matchedAlbum,
+                            matchedDurationMs = matchedDurationMs,
+                            providerTrackId = providerTrackId,
+                            isrc = isrc,
+                            error = "无歌词内容"
+                        )
+                    }
+                    continue
+                }
+
+                val parsedLines = OnlineLyricParser.parseTtmlLyrics(ttml)
+                if (parsedLines.isNotEmpty()) {
+                    return@withContext OnlineLyricFetcher.LyricResult(
+                        api = "AppleMusic",
+                        lyrics = ttml,
+                        parsedLines = parsedLines,
+                        hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
+                        provider = OnlineLyricProvider.AppleMusic,
+                        matchedTitle = matchedTitle,
+                        matchedArtist = matchedArtist,
+                        matchedAlbum = matchedAlbum,
+                        matchedDurationMs = matchedDurationMs,
+                        providerTrackId = providerTrackId,
+                        isrc = isrc
+                    )
                 }
             }
-            if (ttml.isBlank()) {
-                return@withContext OnlineLyricFetcher.LyricResult(
-                    api = "AppleMusic",
-                    lyrics = null,
-                    parsedLines = null,
-                    hasSyllable = false,
-                    provider = OnlineLyricProvider.AppleMusic,
-                    matchedTitle = matchedTitle,
-                    matchedArtist = matchedArtist,
-                    matchedAlbum = matchedAlbum,
-                    matchedDurationMs = matchedDurationMs,
-                    providerTrackId = providerTrackId,
-                    isrc = isrc,
-                    error = "无歌词内容"
-                )
-            }
-
-            val parsedLines = OnlineLyricParser.parseTtmlLyrics(ttml)
-            OnlineLyricFetcher.LyricResult(
-                api = "AppleMusic",
-                lyrics = ttml,
-                parsedLines = parsedLines,
-                hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
-                provider = OnlineLyricProvider.AppleMusic,
-                matchedTitle = matchedTitle,
-                matchedArtist = matchedArtist,
-                matchedAlbum = matchedAlbum,
-                matchedDurationMs = matchedDurationMs,
-                providerTrackId = providerTrackId,
-                isrc = isrc
-            )
+            firstErrorResult
         } catch (e: AppleMusicAuthException) {
             AppLogger.getInstance().w("OnlineLyric", "AppleMusic 登录: ${e.message}")
             OnlineLyricFetcher.LyricResult(
@@ -652,7 +688,9 @@ internal class AppleMusicLyricProvider {
         }.sortedByDescending { it.second }
 
         val best = ranked.firstOrNull() ?: return null
-        val runnerUp = ranked.drop(1).firstOrNull()
+        val runnerUp = ranked.drop(1).firstOrNull {
+            !CandidateMatcher.hasSameStableIdentity(best.first, it.first)
+        }
         if (runnerUp != null && best.second - runnerUp.second < 10) return null
         return best.first
     }
