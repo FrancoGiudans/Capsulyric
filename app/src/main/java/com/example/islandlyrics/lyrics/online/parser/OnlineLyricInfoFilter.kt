@@ -839,11 +839,12 @@ internal object OnlineLyricInfoFilter {
         "吉他", "吉它", "箱琴", "贝斯", "键盘", "钢琴", "弦乐", "管弦", "管乐", "打击乐", "打击", "合成器",
         "提琴", "小号", "长号", "圆号", "萨克斯", "单簧管", "簧管", "巴松", "笛子", "长笛", "短笛", "竹笛", "排箫",
         "口琴", "手风琴", "爵士鼓", "架子鼓", "定音鼓",
-        "古筝", "古琴", "琵琶", "二胡", "胡琴", "扬琴", "唢呐", "尺八", "马头琴", "葫芦丝", "热瓦普", "冬不拉",
+        "古筝", "古琴", "琵琶", "二胡", "胡琴", "扬琴", "唢呐", "尺八", "马头琴", "葫芦丝", "热瓦普", "冬不拉", "科布兹", "巴拉莱卡",
         "乐队", "指挥", "助理", "顾问", "经纪", "艺人", "歌手", "歌名", "曲名", "歌曲", "专辑", "版权", "唱片",
-        "厂牌", "工作室", "音乐室", "音频室", "团队", "协作", "协力",
-        "商务", "合作", "媒介", "管理", "单位", "支持", "平台",
-        "封面", "海报", "视觉", "设计", "摄影", "影像", "题字", "曲绘", "图绘", "调校", "调教", "伴奏", "专辑介绍",
+        "厂牌", "工作室", "音乐室", "音频室", "团队", "协作", "协力", "公司", "承制",
+        "商务", "合作", "媒介", "管理", "单位", "支持", "平台", "执行",
+        "封面", "海报", "视觉", "设计", "摄影", "影像", "导演", "造型", "妆发", "拍摄", "服装", "制片", "灯光", "道具", "剪辑", "调色", "合成",
+        "题字", "曲绘", "图绘", "调校", "调教", "伴奏", "专辑介绍",
         "歌词贡献", "翻译贡献", "时间轴", "lrc制作", "译词",
         // Japanese / Korean
         "作詞", "作曲", "編曲", "訳詞", "演奏", "録音",
@@ -854,7 +855,7 @@ internal object OnlineLyricInfoFilter {
     // Android ART's ICU regex engine treats CJK ideographs as `\w`, which makes `\b`
     // fail on CJK+English glued labels like `词Lyricist` or `曲Composer`.
     internal val ENGLISH_ROLE_REGEX = Regex(
-        """(?<![a-z])(?:op|sp|oa|ot|pv|a&r|pgm|isrc|bpm|midi|rec|arr|prod|lyrics?|lyricist|composer|arranger|arrangement|producer|production|vocals?|vocalist|backing|background|chorus|choir|harmony|hormony|recording|record|mixing|mixer|mix|mastering|master|engineer|engineering|editing|audio|sound|program|programmer|programming|programing|synth|synthesizer|keyboards?|piano|guitars?|bass|drums?|percussion|beats?|strings?|violins?|viola|cello|harp|organ|accordion|brass|horns?|trumpet|trombone|winds?|flute|clarinet|oboe|bassoon|saxophone|harmonica|ocarina|whistle|conductor|studio|assistant|assist|publisher|publishing|distributor|label|copyright|album|singer|artist|artwork|design|cover|photography|director|supervisor|coordinator|marketing|promotion|writer|writers|songwriter|songwriters)(?![a-z])""",
+        """(?<![a-z])(?:op|sp|oa|ot|pv|a&r|pgm|isrc|bpm|midi|rec|arr|prod|lyrics?|lyricist|composer|arranger|arrangement|producer|production|vocals?|vocalist|backing|background|chorus|choir|harmony|hormony|recording|record|mixing|mixer|mix|mastering|master|engineer|engineering|editing|audio|sound|program|programmer|programming|programing|synth|synthesizer|keyboards?|piano|guitars?|bass|drums?|percussion|beats?|strings?|violins?|viola|cello|harp|organ|accordion|brass|horns?|trumpet|trombone|winds?|flute|clarinet|oboe|bassoon|saxophone|harmonica|ocarina|whistle|kobza|balalaika|conductor|studio|assistant|assist|publisher|publishing|distributor|label|copyright|album|singer|artist|artwork|design|cover|photography|stylist|director|supervisor|coordinator|marketing|promotion|writer|writers|songwriter|songwriters)(?![a-z])""",
         RegexOption.IGNORE_CASE
     )
 

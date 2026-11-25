@@ -297,7 +297,8 @@ internal class AppleMusicLyricProvider {
                     continue
                 }
 
-                val parsedLines = OnlineLyricParser.parseTtmlLyrics(ttml)
+                val ttmlParsed = OnlineLyricParser.parseTtmlDocument(ttml)
+                val parsedLines = ttmlParsed.lines
                 if (parsedLines.isNotEmpty()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
                         api = "AppleMusic",
@@ -310,7 +311,9 @@ internal class AppleMusicLyricProvider {
                         matchedAlbum = matchedAlbum,
                         matchedDurationMs = matchedDurationMs,
                         providerTrackId = providerTrackId,
-                        isrc = isrc
+                        isrc = isrc,
+                        translationLyrics = ttmlParsed.translationLrc,
+                        romanLyrics = ttmlParsed.romanizationLrc
                     )
                 }
             }

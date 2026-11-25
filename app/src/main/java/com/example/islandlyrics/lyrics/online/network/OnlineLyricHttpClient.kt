@@ -111,14 +111,16 @@ internal class OnlineLyricHttpClient(
     suspend fun postJsonString(
         url: String,
         bodyJson: String,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        contentType: String = "application/json; charset=utf-8",
+        requireSuccessful: Boolean = false
     ): String? {
         if (!networkAllowed()) return null
-        val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val requestBody = bodyJson.toRequestBody(contentType.toMediaType())
         val request = Request.Builder().url(url).post(requestBody).apply {
             headers.forEach { (key, value) -> header(key, value) }
         }.build()
-        return executeStringCall(request)
+        return executeStringCall(request, requireSuccessful = requireSuccessful)
     }
 
     private suspend fun executeStringCall(

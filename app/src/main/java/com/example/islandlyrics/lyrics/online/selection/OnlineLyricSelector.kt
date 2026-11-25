@@ -23,6 +23,7 @@
 package com.example.islandlyrics.lyrics.online.selection
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 
 internal class OnlineLyricSelector(
@@ -250,9 +251,7 @@ internal class OnlineLyricSelector(
             OnlineLyricProvider.Musixmatch -> 9
         }
 
-        if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true ||
-            result.lyrics?.contains("No lyrics", ignoreCase = true) == true
-        ) {
+        if (OnlineLyricParser.isInstrumentalLyrics(result.parsedLines, result.lyrics)) {
             score -= 100
         }
 

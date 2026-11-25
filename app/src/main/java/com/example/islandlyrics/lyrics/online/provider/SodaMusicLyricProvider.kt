@@ -20,6 +20,11 @@
  *
  */
 
+// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)
+// (https://github.com/WXRIW/Lyricify-Lyrics-Helper)
+// Copyright (C) WXRIW/Lyricify-Lyrics-Helper contributors
+// Licensed under Apache-2.0
+
 package com.example.islandlyrics.lyrics.online.provider
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
@@ -33,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.URLEncoder
+import kotlin.random.Random
 
 internal class SodaMusicLyricProvider(
     private val httpClient: OnlineLyricHttpClient
@@ -47,23 +53,7 @@ internal class SodaMusicLyricProvider(
         withContext(Dispatchers.IO) {
             try {
                 val keyword = ProviderSearchTerm.build(title, artist, album)
-                val searchUrl = "https://api.qishui.com/luna/pc/search/track?aid=386088&app_name=&region=&geo_region=&os_region=&sim_region=&device_id=&cdid=&iid=&version_name=&version_code=&channel=&build_mode=&network_carrier=&ac=&tz_name=&resolution=&device_platform=&device_type=&os_version=&fp=&q=${keyword.encodeURL()}&cursor=&search_id=&search_method=input&debug_params=&from_search_id=&search_scene="
-                val searchResponse = httpClient.get(searchUrl, headers = sodaHeaders()) ?: return@withContext null
-                val searchJson = JSONObject(searchResponse)
-                val resultGroups = searchJson.optJSONArray("result_groups")
-                if (resultGroups == null || resultGroups.length() == 0) return@withContext null
-
-                val tracks = mutableListOf<JSONObject>()
-                for (groupIndex in 0 until resultGroups.length()) {
-                    val group = resultGroups.optJSONObject(groupIndex) ?: continue
-                    val data = group.optJSONArray("data") ?: continue
-                    for (itemIndex in 0 until data.length()) {
-                        val item = data.optJSONObject(itemIndex) ?: continue
-                        val meta = item.optJSONObject("meta")
-                        if (meta?.optString("item_type") != "track") continue
-                        item.optJSONObject("entity")?.optJSONObject("track")?.let { tracks.add(it) }
-                    }
-                }
+                val tracks = searchAndroidTracks(keyword).ifEmpty { searchPcTracks(keyword) }
                 if (tracks.isEmpty()) return@withContext null
 
                 val candidates = tracks.map { SodaTrackCandidate(it) }
@@ -94,6 +84,76 @@ internal class SodaMusicLyricProvider(
                 null
             }
         }
+
+    private suspend fun searchAndroidTracks(keyword: String): List<JSONObject> {
+        val params = linkedMapOf(
+            "device_platform" to "android",
+            "os" to "android",
+            "ssmix" to "a",
+            "cdid" to "46556f98-1720-4248-83da-62b74b60b46a",
+            "channel" to "xiaomi_8478_64",
+            "aid" to "386088",
+            "app_name" to "luna",
+            "version_code" to "100198030",
+            "version_name" to "19.8.0",
+            "manifest_version_code" to "100198030",
+            "update_version_code" to "100198030",
+            "resolution" to "1080*1920",
+            "dpi" to "480",
+            "device_type" to "ABR-AL80",
+            "device_brand" to "HUAWEI",
+            "language" to "zh",
+            "os_api" to "35",
+            "os_version" to "15",
+            "ac" to "wifi",
+            "device_model" to "ABR-AL80",
+            "tz_name" to "Asia/Shanghai",
+            "tz_offset" to "28800",
+            "package" to "com.luna.music",
+            "sim_region" to "cn",
+            "iid" to SEARCH_INSTALL_ID,
+            "device_id" to SEARCH_DEVICE_ID,
+            "_rticket" to System.currentTimeMillis().toString(),
+            "q" to keyword,
+            "cursor" to "0",
+            "count" to "20"
+        )
+        val queryString = params.entries.joinToString("&") { (k, v) -> "${k.encodeURL()}=${v.encodeURL()}" }
+        val searchUrl = "https://api.qishui.com/luna/search/track?$queryString"
+        val response = httpClient.get(
+            searchUrl,
+            headers = mapOf(
+                "Accept" to "*/*",
+                "User-Agent" to SEARCH_USER_AGENT
+            )
+        ) ?: return emptyList()
+        return parseSearchTracks(response)
+    }
+
+    private suspend fun searchPcTracks(keyword: String): List<JSONObject> {
+        val searchUrl = "https://api.qishui.com/luna/pc/search/track?aid=386088&app_name=&region=&geo_region=&os_region=&sim_region=&device_id=&cdid=&iid=&version_name=&version_code=&channel=&build_mode=&network_carrier=&ac=&tz_name=&resolution=&device_platform=&device_type=&os_version=&fp=&q=${keyword.encodeURL()}&cursor=&search_id=&search_method=input&debug_params=&from_search_id=&search_scene="
+        val response = httpClient.get(searchUrl, headers = sodaPcHeaders()) ?: return emptyList()
+        return parseSearchTracks(response)
+    }
+
+    internal fun parseSearchTracks(rawResponse: String): List<JSONObject> {
+        return runCatching {
+            val searchJson = JSONObject(rawResponse)
+            val resultGroups = searchJson.optJSONArray("result_groups") ?: return emptyList()
+            val tracks = mutableListOf<JSONObject>()
+            for (groupIndex in 0 until resultGroups.length()) {
+                val group = resultGroups.optJSONObject(groupIndex) ?: continue
+                val data = group.optJSONArray("data") ?: continue
+                for (itemIndex in 0 until data.length()) {
+                    val item = data.optJSONObject(itemIndex) ?: continue
+                    val meta = item.optJSONObject("meta")
+                    if (meta?.optString("item_type") != "track") continue
+                    item.optJSONObject("entity")?.optJSONObject("track")?.let { tracks.add(it) }
+                }
+            }
+            tracks
+        }.getOrDefault(emptyList())
+    }
 
     suspend fun fetchById(
         trackId: String,
@@ -133,7 +193,34 @@ internal class SodaMusicLyricProvider(
                 ) ?: return@withContext null
 
                 val detailJson = JSONObject(detailResponse)
+                val seoTrack = detailJson.optJSONObject("seo_track")
+                val detailTrackObj = detailJson.optJSONObject("track") ?: seoTrack?.optJSONObject("track")
+                val matched = candidate ?: detailTrackObj?.let(::SodaTrackCandidate)
+                val vocalFlag = detailTrackObj?.optInt("vocal", 0)
+                    ?.takeIf { it > 0 }
+                    ?: (candidate as? SodaTrackCandidate)?.track?.optInt("vocal", 0)
+                    ?: 0
+
+                // vocal == 2: 纯音乐、伴奏等无人声曲目（对齐上游 SodaMusic Response.cs）
+                if (vocalFlag == 2) {
+                    return@withContext OnlineLyricFetcher.LyricResult(
+                        api = "SodaMusic",
+                        lyrics = null,
+                        parsedLines = null,
+                        hasSyllable = false,
+                        provider = OnlineLyricProvider.SodaMusic,
+                        matchedTitle = matched?.matchedTitle,
+                        matchedArtist = matched?.matchedArtist,
+                        matchedAlbum = matched?.matchedAlbum,
+                        matchedDurationMs = matched?.matchedDurationMs,
+                        providerTrackId = providerTrackId,
+                        error = "纯音乐"
+                    )
+                }
+
                 val lyric = detailJson.optJSONObject("lyric")
+                    ?: detailJson.optJSONObject("track_player")?.optJSONObject("lyric")
+                    ?: seoTrack?.optJSONObject("track_player")?.optJSONObject("lyric")
                 val lyricContent = lyric?.optString("content", "").orEmpty()
                 val lyricType = lyric?.optString("type", "").orEmpty()
 
@@ -144,18 +231,16 @@ internal class SodaMusicLyricProvider(
                         parsedLines = null,
                         hasSyllable = false,
                         provider = OnlineLyricProvider.SodaMusic,
-                        matchedTitle = matchedTitle,
-                        matchedArtist = matchedArtist,
-                        matchedAlbum = matchedAlbum,
-                        matchedDurationMs = matchedDurationMs,
+                        matchedTitle = matched?.matchedTitle,
+                        matchedArtist = matched?.matchedArtist,
+                        matchedAlbum = matched?.matchedAlbum,
+                        matchedDurationMs = matched?.matchedDurationMs,
                         providerTrackId = providerTrackId,
                         error = "无歌词内容"
                     )
                 }
 
                 val parsedLines = OnlineLyricParser.parseSodaLyrics(lyricContent, lyricType)
-                val matched = candidate ?: detailJson.optJSONObject("seo_track")?.optJSONObject("track")
-                    ?.let(::SodaTrackCandidate)
                 OnlineLyricFetcher.LyricResult(
                     api = "SodaMusic",
                     lyrics = lyricContent,
@@ -174,13 +259,24 @@ internal class SodaMusicLyricProvider(
             }
         }
 
-    private fun sodaHeaders(): Map<String, String> = mapOf(
+    private fun sodaPcHeaders(): Map<String, String> = mapOf(
         "User-Agent" to "LunaPC/2.6.5(197449790)",
         "Referer" to "https://api.qishui.com/"
     )
 
     private fun String.encodeURL(): String =
         URLEncoder.encode(this, "UTF-8")
+
+    private companion object {
+        private const val SEARCH_USER_AGENT =
+            "com.luna.music/100198030 (Linux; U; Android 15; zh_CN_#Hans; ABR-AL80; Build/V417IR;tt-ok/3.12.13.19)"
+        private val SEARCH_DEVICE_ID: String = generateClientId()
+        private val SEARCH_INSTALL_ID: String = generateClientId()
+
+        private fun generateClientId(): String =
+            Random.nextInt(10_000_000, 100_000_000).toString() +
+                Random.nextInt(10_000_000, 100_000_000).toString()
+    }
 
     private class SodaTrackCandidate(
         val track: JSONObject

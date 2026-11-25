@@ -761,7 +761,13 @@ class OnlineLyricFetcher(
                             query.durationMs,
                             versionReferenceTitle = versionReferenceTitle
                         )
-                        OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                        OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(
+                            query.title,
+                            query.artist,
+                            query.album,
+                            query.durationMs,
+                            versionReferenceTitle = versionReferenceTitle
+                        )
                     }
                 }
             )
