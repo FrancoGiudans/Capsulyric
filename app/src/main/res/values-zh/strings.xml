@@ -173,6 +173,10 @@
     <string name="settings_link_parser_rules">播放器解析规则</string>
     <string name="settings_link_parser_rules_scrobble">播放器解析规则（配置 Scrobble 打卡）</string>
     <string name="settings_core_header">核心</string>
+    <string name="settings_display_appearance_header">显示与外观</string>
+    <string name="settings_lyrics_sources_header">歌词与音源</string>
+    <string name="settings_players_services_header">播放器与服务</string>
+    <string name="settings_data_backup_header">数据与备份</string>
     <string name="settings_permissions_header">权限</string>
     <string name="settings_capsule_notification">胶囊与通知</string>
     <string name="settings_capsule_notification_title">通知与胶囊设置</string>

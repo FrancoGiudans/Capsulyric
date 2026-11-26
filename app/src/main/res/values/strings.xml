@@ -161,6 +161,10 @@
     <string name="settings_link_parser_rules">Music Player Parser Rules</string>
     <string name="settings_link_parser_rules_scrobble">Music Player Rules (Scrobble setup)</string>
     <string name="settings_core_header">Core</string>
+    <string name="settings_display_appearance_header">Display &amp; Appearance</string>
+    <string name="settings_lyrics_sources_header">Lyrics &amp; Sources</string>
+    <string name="settings_players_services_header">Players &amp; Services</string>
+    <string name="settings_data_backup_header">Data &amp; Backup</string>
     <string name="settings_permissions_header">Permissions</string>
     <string name="settings_capsule_notification">Capsule &amp; Notifications</string>
     <string name="settings_capsule_notification_title">Capsule &amp; Notifications</string>

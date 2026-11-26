@@ -54,7 +54,11 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -76,6 +80,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -215,10 +221,9 @@ internal fun MiuixSettingsScreen(
         val key = mainSettingHighlightKey
         if (key != null) {
             val cardIndex = when (key) {
-                "key_language", "key_recommend_media_app",
-                "key_new_playing_app_alert", "key_hide_recents",
-                "key_hide_launcher" -> 3
-                "key_filter_online_lyric_info_lines" -> 5
+                "key_filter_online_lyric_info_lines" -> 3
+                "key_recommend_media_app", "key_new_playing_app_alert" -> 5
+                "key_language", "key_hide_recents", "key_hide_launcher" -> 11
                 else -> null
             }
             if (cardIndex != null) {
@@ -635,6 +640,24 @@ internal fun MiuixSettingsScreen(
                     {}
                 },
                 bottomContent = {
+                    val backdrop = LocalMiuixBlurBackdrop.current
+                    val blurEnabled = LocalMiuixBlurEnabled.current
+                    val searchInteractionSource = remember { MutableInteractionSource() }
+                    val isSearchFocused by searchInteractionSource.collectIsFocusedAsState()
+                    val useFrostedCapsule = !settingsSearchExpanded &&
+                        !isSearchFocused &&
+                        blurEnabled &&
+                        backdrop != null
+                    val searchCapsuleColor by animateColorAsState(
+                        targetValue = if (useFrostedCapsule) {
+                            MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                        } else {
+                            MiuixTheme.colorScheme.surfaceContainerHigh
+                        },
+                        animationSpec = tween(durationMillis = 150),
+                        label = "MiuixSettingsSearchCapsuleColor",
+                    )
+
                     SearchBar(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -646,7 +669,9 @@ internal fun MiuixSettingsScreen(
                                 onSearch = { },
                                 expanded = settingsSearchExpanded,
                                 onExpandedChange = { settingsSearchExpanded = it },
-                                label = stringResource(R.string.settings_search)
+                                label = stringResource(R.string.settings_search),
+                                color = searchCapsuleColor,
+                                interactionSource = searchInteractionSource,
                             )
                         },
                         outsideEndAction = {
@@ -820,8 +845,8 @@ internal fun MiuixSettingsScreen(
                     }
                 }
             } else {
-            // ═══ 1. Core ═══ (index 0, 1)
-            item { SmallTitle(text = stringResource(R.string.settings_core_header)) }
+            // ═══ 1. Display & Appearance ═══ (index 0, 1)
+            item { SmallTitle(text = stringResource(R.string.settings_display_appearance_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
@@ -835,43 +860,59 @@ internal fun MiuixSettingsScreen(
                                 ?: onOpenCustomSettings()
                         }
                     )
-                }
-            }
-
-            // ═══ 2. General ═══ (index 2, 3)
-            item { SmallTitle(text = stringResource(R.string.settings_general_header)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    // 个性化设置（仅保留 App 界面内容）
                     SuperArrow(
                         title = stringResource(R.string.page_title_personalization),
                         onClick = onOpenCustomSettings
                     )
+                }
+            }
 
-                    // Language
-                    val langOptions = listOf("", "en", "zh-CN", "zh-TW", "ja")
-                    val langNames = listOf(
-                        stringResource(R.string.lang_sys_default),
-                        stringResource(R.string.lang_english),
-                        stringResource(R.string.lang_chinese),
-                        stringResource(R.string.lang_chinese_traditional),
-                        stringResource(R.string.lang_japanese)
+            // ═══ 2. Lyrics & Sources ═══ (index 2, 3)
+            item { SmallTitle(text = stringResource(R.string.settings_lyrics_sources_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.settings_local_lyrics_title),
+                        summary = stringResource(R.string.settings_local_lyrics_directories),
+                        onClick = onOpenLocalLyricDirectories
                     )
-                    val currentLangCode = ThemeHelper.getLanguage(context)
-                    val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
-
-                    SuperDropdown(
-                        title = stringResource(R.string.settings_language),
-                        items = langNames,
-                        selectedIndex = currentLangIndex,
-                        modifier = mainSettingModifier("key_language"),
-                        onSelectedIndexChange = { index ->
-                            val code = langOptions[index]
-                            ThemeHelper.setLanguage(context, code)
-                            (context as? Activity)?.recreate()
+                    if (!offlineModeEnabled) {
+                        SuperArrow(
+                            title = stringResource(R.string.online_lyric_rematch_title),
+                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                            onClick = {
+                                onOpenOnlineLyricRematch?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                            }
+                        )
+                        SuperArrow(
+                            title = stringResource(R.string.apple_music_settings_title),
+                            summary = stringResource(R.string.apple_music_settings_summary),
+                            onClick = {
+                                handleSettingsAction(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
+                            }
+                        )
+                    }
+                    var filterOnlineLyricInfoLines by remember {
+                        mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs))
+                    }
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_filter_online_lyric_info_lines),
+                        summary = stringResource(R.string.settings_filter_online_lyric_info_lines_desc),
+                        checked = filterOnlineLyricInfoLines,
+                        modifier = mainSettingModifier("key_filter_online_lyric_info_lines"),
+                        onCheckedChange = {
+                            filterOnlineLyricInfoLines = it
+                            prefs.edit { putBoolean(AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES, it) }
                         }
                     )
+                }
+            }
 
+            // ═══ 3. Players & Services ═══ (index 4, 5)
+            item { SmallTitle(text = stringResource(R.string.settings_players_services_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     // Recommend Media App
                     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                     SuperSwitch(
@@ -902,44 +943,23 @@ internal fun MiuixSettingsScreen(
                         }
                     )
 
-                    // Hide Recents
-                    var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_hide_recents),
-                        summary = stringResource(R.string.settings_hide_recents_desc),
-                        checked = hideRecentsEnabled,
-                        modifier = mainSettingModifier("key_hide_recents"),
-                        onCheckedChange = {
-                            hideRecentsEnabled = it
-                            prefs.edit { putBoolean("hide_recents_enabled", it) }
-                        }
-                    )
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_hide_launcher),
-                        summary = stringResource(R.string.settings_hide_launcher_desc),
-                        checked = launcherHidden,
-                        modifier = mainSettingModifier("key_hide_launcher"),
-                        onCheckedChange = { newValue ->
-                            if (newValue) {
-                                showHideLauncherDialog.value = true
-                            } else {
-                                launcherHidden = false
-                                LauncherAliasManager.setAliasEnabled(context, true)
+                    if (!offlineModeEnabled) {
+                        SuperArrow(
+                            title = stringResource(R.string.lastfm_title),
+                            summary = stringResource(R.string.lastfm_settings_summary),
+                            onClick = {
+                                onOpenLastFm?.invoke()
+                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
 
-            // ═══ 3. Lyric Tools（本地歌词 + 歌词工具）═══ (index 4, 5)
-            item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
+            // ═══ 4. Data & Backup ═══ (index 6, 7)
+            item { SmallTitle(text = stringResource(R.string.settings_data_backup_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(
-                        title = stringResource(R.string.settings_local_lyrics_title),
-                        summary = stringResource(R.string.settings_local_lyrics_directories),
-                        onClick = onOpenLocalLyricDirectories
-                    )
                     SuperArrow(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
@@ -948,48 +968,29 @@ internal fun MiuixSettingsScreen(
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
                         }
                     )
-                    var filterOnlineLyricInfoLines by remember {
-                        mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs))
-                    }
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_filter_online_lyric_info_lines),
-                        summary = stringResource(R.string.settings_filter_online_lyric_info_lines_desc),
-                        checked = filterOnlineLyricInfoLines,
-                        modifier = mainSettingModifier("key_filter_online_lyric_info_lines"),
-                        onCheckedChange = {
-                            filterOnlineLyricInfoLines = it
-                            prefs.edit { putBoolean(AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES, it) }
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        onClick = {
+                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
                         }
                     )
-                    if (!offlineModeEnabled) {
-                        SuperArrow(
-                            title = stringResource(R.string.online_lyric_rematch_title),
-                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
-                            onClick = {
-                                onOpenOnlineLyricRematch?.invoke()
-                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
-                            }
-                        )
-                        SuperArrow(
-                            title = stringResource(R.string.lastfm_title),
-                            summary = stringResource(R.string.lastfm_settings_summary),
-                            onClick = {
-                                onOpenLastFm?.invoke()
-                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
-                            }
-                        )
-                        SuperArrow(
-                            title = stringResource(R.string.apple_music_settings_title),
-                            summary = stringResource(R.string.apple_music_settings_summary),
-                            onClick = {
-                                handleSettingsAction(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
-                            }
-                        )
-                    }
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        onClick = {
+                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                        }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
+                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
+                    )
                 }
             }
 
-            // ═══ 4. Permissions ═══ (index 6, 7)
+            // ═══ 5. Permissions ═══ (index 8, 9)
             item { SmallTitle(text = stringResource(R.string.settings_permissions_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -1037,33 +1038,64 @@ internal fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 5. Backup & Restore ═══ (index 8, 9)
-            item { SmallTitle(text = stringResource(R.string.settings_backup_header)) }
+            // ═══ 6. General ═══ (index 10, 11)
+            item { SmallTitle(text = stringResource(R.string.settings_general_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(
-                        title = stringResource(R.string.settings_backup_export),
-                        summary = stringResource(R.string.settings_backup_export_desc),
-                        onClick = {
-                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
+                    // Language
+                    val langOptions = listOf("", "en", "zh-CN", "zh-TW", "ja")
+                    val langNames = listOf(
+                        stringResource(R.string.lang_sys_default),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_chinese),
+                        stringResource(R.string.lang_chinese_traditional),
+                        stringResource(R.string.lang_japanese)
+                    )
+                    val currentLangCode = ThemeHelper.getLanguage(context)
+                    val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
+
+                    SuperDropdown(
+                        title = stringResource(R.string.settings_language),
+                        items = langNames,
+                        selectedIndex = currentLangIndex,
+                        modifier = mainSettingModifier("key_language"),
+                        onSelectedIndexChange = { index ->
+                            val code = langOptions[index]
+                            ThemeHelper.setLanguage(context, code)
+                            (context as? Activity)?.recreate()
                         }
                     )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_backup_import),
-                        summary = stringResource(R.string.settings_backup_import_desc),
-                        onClick = {
-                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+
+                    // Hide Recents
+                    var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_hide_recents),
+                        summary = stringResource(R.string.settings_hide_recents_desc),
+                        checked = hideRecentsEnabled,
+                        modifier = mainSettingModifier("key_hide_recents"),
+                        onCheckedChange = {
+                            hideRecentsEnabled = it
+                            prefs.edit { putBoolean("hide_recents_enabled", it) }
                         }
                     )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_import_other_apps),
-                        summary = stringResource(R.string.settings_import_other_apps_desc),
-                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_hide_launcher),
+                        summary = stringResource(R.string.settings_hide_launcher_desc),
+                        checked = launcherHidden,
+                        modifier = mainSettingModifier("key_hide_launcher"),
+                        onCheckedChange = { newValue ->
+                            if (newValue) {
+                                showHideLauncherDialog.value = true
+                            } else {
+                                launcherHidden = false
+                                LauncherAliasManager.setAliasEnabled(context, true)
+                            }
+                        }
                     )
                 }
             }
 
-            // ═══ 6. Help & About ═══ (index 10, 11)
+            // ═══ 7. Help & About ═══ (index 12, 13)
             item { SmallTitle(text = stringResource(R.string.settings_help_about_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {

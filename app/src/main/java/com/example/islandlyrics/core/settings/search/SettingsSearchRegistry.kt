@@ -86,28 +86,28 @@ object SettingsSearchRegistry {
         SettingsSearchItem(
             id = "page_capsule_notification",
             titleRes = R.string.settings_capsule_notification,
-            breadcrumbResList = listOf(R.string.settings_core_header),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header),
             keywords = listOf("灵动岛", "胶囊", "超级岛", "状态栏通知", "ldd", "jn"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CAPSULE_NOTIFICATION)
         ),
         SettingsSearchItem(
             id = "page_desktop_lyrics",
             titleRes = R.string.settings_floating_lyrics,
-            breadcrumbResList = listOf(R.string.settings_core_header),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header),
             keywords = listOf("桌面歌词", "悬浮歌词", "桌面悬浮窗", "悬浮窗歌词", "zm", "xf"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
             id = "page_parser_rules",
             titleRes = R.string.tab_rules,
-            breadcrumbResList = listOf(R.string.settings_core_header),
+            breadcrumbResList = listOf(R.string.settings_players_services_header),
             keywords = listOf("规则", "解析规则", "播放器规则", "通知规则", "gz", "jxgz"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES)
         ),
         SettingsSearchItem(
             id = "page_personalization",
             titleRes = R.string.page_title_personalization,
-            breadcrumbResList = listOf(R.string.settings_general_header),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header),
             keywords = listOf("个性化", "界面", "主题", "深色模式", "gxh"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.APP_UI)
         ),
@@ -125,7 +125,7 @@ object SettingsSearchRegistry {
             id = "pref_recommend_media_app",
             titleRes = R.string.settings_recommend_media_app,
             summaryRes = R.string.settings_recommend_media_app_desc,
-            breadcrumbResList = listOf(R.string.settings_general_header),
+            breadcrumbResList = listOf(R.string.settings_players_services_header),
             keywords = listOf("推荐媒体应用", "推荐播放器", "自动推荐"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.MAIN_SETTINGS,
@@ -136,7 +136,7 @@ object SettingsSearchRegistry {
             id = "pref_new_playing_app_alert",
             titleRes = R.string.settings_new_playing_app_alert,
             summaryRes = R.string.settings_new_playing_app_alert_desc,
-            breadcrumbResList = listOf(R.string.settings_general_header),
+            breadcrumbResList = listOf(R.string.settings_players_services_header),
             keywords = listOf("发现新播放应用提示", "新应用提醒", "未配置应用"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.MAIN_SETTINGS,
@@ -194,7 +194,7 @@ object SettingsSearchRegistry {
             id = "page_local_lyrics",
             titleRes = R.string.settings_local_lyrics_title,
             summaryRes = R.string.settings_local_lyrics_directories,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_lyrics_sources_header),
             keywords = listOf("本地歌词", "歌词目录", "本地lrc", "文件夹扫描"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES)
         ),
@@ -202,7 +202,7 @@ object SettingsSearchRegistry {
             id = "page_cache_management",
             titleRes = R.string.title_cache_management,
             summaryRes = R.string.settings_cache_management_desc,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_data_backup_header),
             keywords = listOf("缓存管理", "歌词缓存", "清理缓存", "清除全部数据", "导出缓存"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT)
         ),
@@ -210,7 +210,7 @@ object SettingsSearchRegistry {
             id = "pref_filter_online_lyric_info_lines",
             titleRes = R.string.settings_filter_online_lyric_info_lines,
             summaryRes = R.string.settings_filter_online_lyric_info_lines_desc,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_lyrics_sources_header),
             keywords = listOf("过滤多余信息", "过滤演职员", "作词作曲", "制作人", "版权声明", "在线歌词过滤", "filter credits", "info lines"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.MAIN_SETTINGS,
@@ -221,7 +221,7 @@ object SettingsSearchRegistry {
             id = "page_online_rematch",
             titleRes = R.string.online_lyric_rematch_title,
             summaryRes = R.string.online_lyric_rematch_settings_desc,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_lyrics_sources_header),
             keywords = listOf("在线歌词重匹配", "重新匹配歌词", "歌词源调试"),
             isVisible = { !OfflineModeManager.isEnabled(it) },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.ONLINE_LYRIC_REMATCH)
@@ -230,7 +230,7 @@ object SettingsSearchRegistry {
             id = "page_lastfm",
             titleRes = R.string.lastfm_title,
             summaryRes = R.string.lastfm_settings_summary,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_players_services_header),
             keywords = listOf("Last.fm", "记录播放", "Scrobble", "音乐打卡"),
             isVisible = { !OfflineModeManager.isEnabled(it) },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.LAST_FM)
@@ -239,7 +239,7 @@ object SettingsSearchRegistry {
             id = "page_apple_music",
             titleRes = R.string.apple_music_settings_title,
             summaryRes = R.string.apple_music_settings_summary,
-            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            breadcrumbResList = listOf(R.string.settings_lyrics_sources_header),
             keywords = listOf("Apple Music", "苹果音乐", "网易云歌词同步"),
             isVisible = { !OfflineModeManager.isEnabled(it) },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC)
@@ -248,7 +248,7 @@ object SettingsSearchRegistry {
             id = "dialog_backup_export",
             titleRes = R.string.settings_backup_export,
             summaryRes = R.string.settings_backup_export_desc,
-            breadcrumbResList = listOf(R.string.settings_backup_header),
+            breadcrumbResList = listOf(R.string.settings_data_backup_header),
             keywords = listOf("备份设置", "导出配置", "导出设置", "备份"),
             action = SettingsSearchAction.TriggerDialog(MainSettingsDialogType.BACKUP_EXPORT)
         ),
@@ -256,7 +256,7 @@ object SettingsSearchRegistry {
             id = "dialog_backup_import",
             titleRes = R.string.settings_backup_import,
             summaryRes = R.string.settings_backup_import_desc,
-            breadcrumbResList = listOf(R.string.settings_backup_header),
+            breadcrumbResList = listOf(R.string.settings_data_backup_header),
             keywords = listOf("恢复设置", "导入配置", "导入设置", "还原"),
             action = SettingsSearchAction.TriggerDialog(MainSettingsDialogType.BACKUP_IMPORT)
         ),
@@ -264,7 +264,7 @@ object SettingsSearchRegistry {
             id = "dialog_import_other_apps",
             titleRes = R.string.settings_import_other_apps,
             summaryRes = R.string.settings_import_other_apps_desc,
-            breadcrumbResList = listOf(R.string.settings_backup_header),
+            breadcrumbResList = listOf(R.string.settings_data_backup_header),
             keywords = listOf("从其他应用导入", "第三方导入", "Lyrimuse", "Lyricify", "导入备份"),
             action = SettingsSearchAction.TriggerDialog(MainSettingsDialogType.IMPORT_OTHER_APPS)
         ),
@@ -850,7 +850,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_enabled",
             titleRes = R.string.settings_floating_lyrics_enabled,
             summaryRes = R.string.settings_floating_lyrics_enabled_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("启用桌面歌词", "启用悬浮歌词", "悬浮窗权限", "开启悬浮歌词"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -861,7 +861,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_show",
             titleRes = R.string.settings_floating_lyrics_show,
             summaryRes = R.string.settings_floating_lyrics_show_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("显示桌面歌词", "开启桌面歌词", "悬浮歌词开关"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -871,7 +871,7 @@ object SettingsSearchRegistry {
         SettingsSearchItem(
             id = "pref_desktop_lyrics_recovery",
             titleRes = R.string.settings_floating_recovery,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("恢复显示策略", "切歌恢复", "自动恢复悬浮歌词"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -882,7 +882,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_keep_on_pause",
             titleRes = R.string.settings_floating_keep_on_pause,
             summaryRes = R.string.settings_floating_keep_on_pause_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("暂停时保留", "暂停保持显示", "桌面歌词不隐藏"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -893,7 +893,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_show_album_art",
             titleRes = R.string.settings_floating_show_album_art,
             summaryRes = R.string.settings_floating_show_album_art_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("桌面歌词封面", "显示专辑封面"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -904,7 +904,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_text_stroke",
             titleRes = R.string.settings_floating_text_stroke,
             summaryRes = R.string.settings_floating_text_stroke_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("文字描边", "歌词描边", "阴影描边"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -915,7 +915,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_text_background",
             titleRes = R.string.settings_floating_text_background,
             summaryRes = R.string.settings_floating_text_background_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("文字底色", "歌词背景", "悬浮窗背景"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -926,7 +926,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_show_second_line",
             titleRes = R.string.settings_floating_show_second_line,
             summaryRes = R.string.settings_floating_show_second_line_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("双行歌词", "下一行歌词", "副歌词", "桌面双行"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -937,7 +937,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_word_highlight",
             titleRes = R.string.settings_floating_word_highlight,
             summaryRes = R.string.settings_floating_word_highlight_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("逐字高亮", "逐字歌词", "卡拉OK", "逐字渲染"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -948,7 +948,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_follow_album_color",
             titleRes = R.string.settings_floating_follow_album_color,
             summaryRes = R.string.settings_floating_follow_album_color_desc,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
             keywords = listOf("跟随封面颜色", "桌面歌词取色", "桌面歌词颜色"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.DESKTOP_LYRICS,
@@ -959,7 +959,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_text_size",
             titleRes = R.string.settings_floating_text_size,
             breadcrumbResList = listOf(
-                R.string.settings_core_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
+                R.string.settings_display_appearance_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
             ),
             keywords = listOf("字号", "字体大小", "桌面歌词大小", "歌词大小", "字体设置"),
             action = SettingsSearchAction.Navigate(
@@ -971,7 +971,7 @@ object SettingsSearchRegistry {
             id = "pref_desktop_lyrics_text_weight",
             titleRes = R.string.settings_floating_text_weight,
             breadcrumbResList = listOf(
-                R.string.settings_core_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
+                R.string.settings_display_appearance_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
             ),
             keywords = listOf("字重", "字体粗细", "加粗", "font weight", "bold"),
             action = SettingsSearchAction.Navigate(

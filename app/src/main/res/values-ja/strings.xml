@@ -173,6 +173,10 @@
     <string name="settings_link_parser_rules">プレイヤー解析ルール</string>
     <string name="settings_link_parser_rules_scrobble">プレイヤー解析ルール（Scrobble設定）</string>
     <string name="settings_core_header">コア</string>
+    <string name="settings_display_appearance_header">表示と外観</string>
+    <string name="settings_lyrics_sources_header">歌詞とソース</string>
+    <string name="settings_players_services_header">プレーヤーとサービス</string>
+    <string name="settings_data_backup_header">データとバックアップ</string>
     <string name="settings_permissions_header">権限</string>
     <string name="settings_capsule_notification">カプセルと通知</string>
     <string name="settings_capsule_notification_title">カプセルと通知</string>

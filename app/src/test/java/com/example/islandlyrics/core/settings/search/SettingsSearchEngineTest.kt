@@ -87,7 +87,7 @@ class SettingsSearchEngineTest {
     fun testSearchEngine_titleMatch() {
         val map = mapOf(
             R.string.settings_capsule_notification to "胶囊与通知",
-            R.string.settings_core_header to "核心"
+            R.string.settings_display_appearance_header to "显示与外观"
         )
 
         val results = SettingsSearchEngine.search(
@@ -206,5 +206,35 @@ class SettingsSearchEngineTest {
         val offlineMode = itemsById.getValue("pref_full_offline_mode").action as SettingsSearchAction.Navigate
         assertEquals(SettingsNavigationTarget.LAB, offlineMode.target)
         assertEquals("key_full_offline_mode", offlineMode.targetItemKey)
+    }
+
+    @Test
+    fun testSearchRegistry_updatedGroupBreadcrumbs() {
+        val itemsById = SettingsSearchRegistry.getAllItems().associateBy { it.id }
+
+        assertEquals(
+            listOf(R.string.settings_display_appearance_header),
+            itemsById.getValue("page_personalization").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_lyrics_sources_header),
+            itemsById.getValue("page_local_lyrics").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_players_services_header),
+            itemsById.getValue("page_lastfm").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_data_backup_header),
+            itemsById.getValue("page_cache_management").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_permissions_header),
+            itemsById.getValue("perm_read_notif").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_general_header),
+            itemsById.getValue("pref_language").breadcrumbResList
+        )
     }
 }
