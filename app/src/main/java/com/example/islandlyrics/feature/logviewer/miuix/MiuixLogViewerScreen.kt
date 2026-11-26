@@ -25,6 +25,8 @@ package com.example.islandlyrics.feature.logviewer.miuix
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,7 +71,8 @@ private enum class LogAction { SHARE, SAVE }
 
 @Composable
 fun MiuixLogViewerScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -133,12 +136,14 @@ fun MiuixLogViewerScreen(
                 title = stringResource(R.string.log_viewer_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.log_viewer_back),
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = stringResource(R.string.log_viewer_back),
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -204,77 +209,124 @@ fun MiuixLogViewerScreen(
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Search & Filter
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        label = stringResource(R.string.log_viewer_search),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val levels = listOf(
-                            "ALL" to stringResource(R.string.log_viewer_level_all),
-                            "E" to stringResource(R.string.log_viewer_level_error),
-                            "W" to stringResource(R.string.log_viewer_level_warn),
-                            "D" to stringResource(R.string.log_viewer_level_debug)
-                        )
-                        levels.forEach { (level, label) ->
-                            MiuixFilterPill(
-                                label = label,
-                                selected = filterLevel == level,
-                                onClick = { filterLevel = level },
-                                color = when (level) {
-                                    "E" -> Color(0xFFE57373)
-                                    "W" -> Color(0xFFFFB74D)
-                                    "D" -> MiuixTheme.colorScheme.primary
-                                    else -> null
+        val layoutInfo = LocalAppWindowLayout.current
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+        val startPadding = padding.calculateStartPadding(layoutDirection)
+        val endPadding = padding.calculateEndPadding(layoutDirection)
+        val topPadding = padding.calculateTopPadding()
+        val bottomPadding = padding.calculateBottomPadding()
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = startPadding, top = topPadding, end = endPadding)
+                    .widthIn(max = 1000.dp)
+            ) {
+                val compactFilterRow = layoutInfo.isLandscape && maxWidth >= 600.dp
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Search & Filter
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            val levels = listOf(
+                                "ALL" to stringResource(R.string.log_viewer_level_all),
+                                "E" to stringResource(R.string.log_viewer_level_error),
+                                "W" to stringResource(R.string.log_viewer_level_warn),
+                                "D" to stringResource(R.string.log_viewer_level_debug)
+                            )
+                            if (compactFilterRow) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        label = stringResource(R.string.log_viewer_search),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    levels.forEach { (level, label) ->
+                                        MiuixFilterPill(
+                                            label = label,
+                                            selected = filterLevel == level,
+                                            onClick = { filterLevel = level },
+                                            color = when (level) {
+                                                "E" -> Color(0xFFE57373)
+                                                "W" -> Color(0xFFFFB74D)
+                                                "D" -> MiuixTheme.colorScheme.primary
+                                                else -> null
+                                            }
+                                        )
+                                    }
+                                }
+                            } else {
+                                TextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    label = stringResource(R.string.log_viewer_search),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    levels.forEach { (level, label) ->
+                                        MiuixFilterPill(
+                                            label = label,
+                                            selected = filterLevel == level,
+                                            onClick = { filterLevel = level },
+                                            color = when (level) {
+                                                "E" -> Color(0xFFE57373)
+                                                "W" -> Color(0xFFFFB74D)
+                                                "D" -> MiuixTheme.colorScheme.primary
+                                                else -> null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SuperDropdown(
+                                title = stringResource(R.string.log_viewer_record_level),
+                                summary = stringResource(R.string.log_viewer_record_level_summary),
+                                items = recordLevelOptions.map { it.second },
+                                selectedIndex = recordLevelOptions.indexOfFirst { it.first == recordLevel }.coerceAtLeast(0),
+                                onSelectedIndexChange = { index ->
+                                    val level = recordLevelOptions[index].first
+                                    recordLevel = level
+                                    AppPreferences.of(context).edit {
+                                        putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
+                                    }
+                                    AppLogger.getInstance().setMinimumLevel(level)
                                 }
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SuperDropdown(
-                        title = stringResource(R.string.log_viewer_record_level),
-                        summary = stringResource(R.string.log_viewer_record_level_summary),
-                        items = recordLevelOptions.map { it.second },
-                        selectedIndex = recordLevelOptions.indexOfFirst { it.first == recordLevel }.coerceAtLeast(0),
-                        onSelectedIndexChange = { index ->
-                            val level = recordLevelOptions[index].first
-                            recordLevel = level
-                            AppPreferences.of(context).edit {
-                                putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
-                            }
-                            AppLogger.getInstance().setMinimumLevel(level)
-                        }
-                    )
-                }
-            }
 
-            // List
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
-            ) {
-                if (logs.isEmpty()) {
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                            BasicComponent(
-                                title = stringResource(R.string.log_viewer_no_match_title),
-                                summary = stringResource(R.string.log_viewer_no_match_summary)
-                            )
+                    // List
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding + 80.dp)
+                    ) {
+                        if (logs.isEmpty()) {
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    BasicComponent(
+                                        title = stringResource(R.string.log_viewer_no_match_title),
+                                        summary = stringResource(R.string.log_viewer_no_match_summary)
+                                    )
+                                }
+                            }
+                        } else {
+                            items(logs.size, key = { "log_$it" }) { index ->
+                                MiuixLogItem(entry = logs[index])
+                            }
                         }
-                    }
-                } else {
-                    items(logs.size, key = { "log_$it" }) { index ->
-                        MiuixLogItem(entry = logs[index])
                     }
                 }
             }

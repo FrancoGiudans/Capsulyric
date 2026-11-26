@@ -39,6 +39,9 @@ import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
@@ -47,7 +50,10 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun MiuixCommunityScreen(onBack: () -> Unit) {
+fun MiuixCommunityScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
@@ -72,34 +78,51 @@ fun MiuixCommunityScreen(onBack: () -> Unit) {
                 title = stringResource(R.string.settings_community_header),
                 largeTitle = stringResource(R.string.settings_community_header),
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 }
             )
         },
         containerColor = MiuixTheme.colorScheme.surface
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
-            )
-        ) {
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    CommunitySection(
-                        offlineModeEnabled = offlineModeEnabled,
-                        feedSourcePriority = feedSourcePriority,
-                        onFeedSourcePriorityChange = { source ->
-                            feedSourcePriority = source
-                            LabFeatureManager.setFeedSourcePriority(context, source)
-                        },
-                        communityFeed = communityFeed,
-                        communityFeedLoaded = communityFeedLoaded,
-                        onCommunityItemClick = { communityDialogState = it }
-                    )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 12.dp,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        CommunitySection(
+                            offlineModeEnabled = offlineModeEnabled,
+                            feedSourcePriority = feedSourcePriority,
+                            onFeedSourcePriorityChange = { source ->
+                                feedSourcePriority = source
+                                LabFeatureManager.setFeedSourcePriority(context, source)
+                            },
+                            communityFeed = communityFeed,
+                            communityFeedLoaded = communityFeedLoaded,
+                            onCommunityItemClick = { communityDialogState = it }
+                        )
+                    }
                 }
             }
         }

@@ -42,6 +42,9 @@ import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +107,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -114,6 +119,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.AdaptiveWidthItem
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.WindowSizeTier
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
+import kotlinx.coroutines.launch
 import com.example.islandlyrics.runtime.media.openMediaApp
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
@@ -247,6 +258,39 @@ fun MainScreen(
     }
 
 
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val coroutineScope = rememberCoroutineScope()
+    val useTwoPane = layoutInfo.tier == WindowSizeTier.CompactLandscape ||
+        layoutInfo.tier == WindowSizeTier.Expanded ||
+        layoutInfo.tier == WindowSizeTier.ExtraLarge
+    val compactLandscape = layoutInfo.tier == WindowSizeTier.CompactLandscape
+    val sessionPagerState = rememberPagerState(pageCount = { whitelistedSessions.size.coerceAtLeast(1) })
+    val subtitleText = if (whitelistedSessions.isEmpty()) {
+        stringResource(R.string.main_now_playing_subtitle_idle)
+    } else {
+        stringResource(R.string.main_now_playing_subtitle_active)
+    }
+    val showOnlineRematch = !OfflineModeManager.isEnabled(context) &&
+        (isCurrentTrackInstrumental ||
+            isOnlineLyricSource(repoLyric?.apiPath) ||
+            isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
+            (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty()))
+    val primaryLyricText = HomeLyricPreviewDisplay.previewText(
+        modes = homeLyricPreviewDisplayModes,
+        currentLine = repoCurrentLine,
+        lyricInfo = repoLyric,
+        nextLine = repoNextLine
+    )
+    val primaryLyricSourceText = run {
+        val activeParsed = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
+        formatPrimaryLyricSource(
+            apiPath = activeParsed?.apiPath ?: repoLyric?.apiPath,
+            sourceLabel = activeParsed?.sourceLabel,
+            sourceApp = repoLyric?.sourceApp
+        )
+    }
+
     MaterialBlurScaffold(
         containerColor = materialPageContainerColor(),
         contentWindowInsets = WindowInsets(0),
@@ -268,116 +312,300 @@ fun MainScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = innerPadding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 20.dp,
-                top = innerPadding.calculateTopPadding() + 16.dp,
-                end = innerPadding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 20.dp,
-                bottom = innerPadding.calculateBottomPadding() + 16.dp + extraBottomPadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                StatusPill(
-                    statusText = statusText,
-                    isActive = listenerEnabled && serviceConnected,
-                    onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
-                )
-            }
-
-            item {
-                SectionLabel(
-                    title = stringResource(R.string.main_now_playing_title),
-                    subtitle = if (whitelistedSessions.isEmpty()) {
-                        stringResource(R.string.main_now_playing_subtitle_idle)
-                    } else {
-                        stringResource(R.string.main_now_playing_subtitle_active)
-                    }
-                )
-            }
-
-            item {
-                if (whitelistedSessions.isEmpty()) {
-                    IdleCard()
-                } else {
-                    val pagerState = rememberPagerState(pageCount = { whitelistedSessions.size })
-                    var maxCardHeightPx by remember(whitelistedSessions.size) { mutableIntStateOf(0) }
-                    val minCardHeight = with(LocalDensity.current) {
-                        if (maxCardHeightPx > 0) maxCardHeightPx.toDp() else 0.dp
-                    }
-                    Column {
-                        HorizontalPager(
-                            state = pagerState,
-                            pageSpacing = 14.dp,
-                            key = { whitelistedSessions[it].sessionToken },
-                        ) { page ->
-                            val controller = whitelistedSessions[page]
-                            val isPrimary = controller.sessionToken == mediaCards.primaryToken
-                            MediaSessionCard(
-                                controller = controller,
-                                isPrimary = isPrimary,
-                                primaryMetadata = if (isPrimary) repoMetadata else null,
-                                primaryLyric = if (isPrimary) {
-                                    HomeLyricPreviewDisplay.previewText(
-                                        modes = homeLyricPreviewDisplayModes,
-                                        currentLine = repoCurrentLine,
-                                        lyricInfo = repoLyric,
-                                        nextLine = repoNextLine
-                                    )
-                                } else {
-                                    null
-                                },
-                                primaryLyricSource = if (isPrimary) {
-                                    val activeParsed = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
-                                    formatPrimaryLyricSource(
-                                        apiPath = activeParsed?.apiPath ?: repoLyric?.apiPath,
-                                        sourceLabel = activeParsed?.sourceLabel,
-                                        sourceApp = repoLyric?.sourceApp
-                                    )
-                                } else null,
-                                primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
-                                primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
-                                primaryLyricResolveState = repoLyricResolveState,
-                                primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
-                                primaryProgress = if (isPrimary) repoProgress else null,
-                                primaryIsPlaying = if (isPrimary) repoPlaying else null,
-                                showOnlineLyricRematch = isPrimary &&
-                                    !OfflineModeManager.isEnabled(context) &&
-                                    (isCurrentTrackInstrumental ||
-                                        isOnlineLyricSource(repoLyric?.apiPath) ||
-                                        isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
-                                        (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty())),
-                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
-                                minCardHeight = minCardHeight,
-                                onHeightMeasured = { measuredHeight ->
-                                    if (measuredHeight > maxCardHeightPx) {
-                                        maxCardHeightPx = measuredHeight
+        if (useTwoPane) {
+            AdaptiveTwoPane(
+                startWeight = if (compactLandscape) 0.36f else 0.38f,
+                spacing = 16.dp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = innerPadding.calculateStartPadding(layoutDirection) + 20.dp,
+                        end = innerPadding.calculateEndPadding(layoutDirection) + 20.dp
+                    ),
+                startPane = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(
+                                top = innerPadding.calculateTopPadding() + 12.dp,
+                                bottom = innerPadding.calculateBottomPadding() + 16.dp + extraBottomPadding
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        StatusPill(
+                            statusText = statusText,
+                            isActive = listenerEnabled && serviceConnected,
+                            onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
+                        )
+                        SectionLabel(
+                            title = stringResource(R.string.main_now_playing_title),
+                            subtitle = subtitleText
+                        )
+                        if (whitelistedSessions.isNotEmpty()) {
+                            MaterialHomeSessionSelectorCard(
+                                sessions = whitelistedSessions,
+                                primaryToken = mediaCards.primaryToken,
+                                selectedIndex = sessionPagerState.currentPage.coerceIn(0, whitelistedSessions.lastIndex),
+                                onSelectSession = { index ->
+                                    coroutineScope.launch {
+                                        sessionPagerState.animateScrollToPage(index)
                                     }
                                 }
                             )
                         }
-                        if (whitelistedSessions.size > 1) {
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                                repeat(whitelistedSessions.size) { index ->
-                                    val active = pagerState.currentPage == index
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp)
-                                            .height(8.dp)
-                                            .width(if (active) 28.dp else 8.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (active) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.surfaceContainerHighest
-                                                }
-                                            )
-                                    )
-                                }
+                    }
+                },
+                endPane = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(
+                                top = innerPadding.calculateTopPadding() + 12.dp,
+                                bottom = innerPadding.calculateBottomPadding() + 16.dp + extraBottomPadding
+                            ),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = if (compactLandscape) 720.dp else 680.dp)
+                        ) {
+                            if (whitelistedSessions.isEmpty()) {
+                                IdleCard()
+                            } else {
+                                MaterialSessionPagerSection(
+                                    sessions = whitelistedSessions,
+                                    pagerState = sessionPagerState,
+                                    compactLandscape = compactLandscape,
+                                    primaryToken = mediaCards.primaryToken,
+                                    primaryMetadata = repoMetadata,
+                                    primaryLyricText = primaryLyricText,
+                                    primaryLyricSource = primaryLyricSourceText,
+                                    primaryIsInstrumental = isCurrentTrackInstrumental,
+                                    primaryHasTimeline = repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                    primaryLyricResolveState = repoLyricResolveState,
+                                    primaryAlbumArt = repoAlbumArt,
+                                    primaryProgress = repoProgress,
+                                    primaryIsPlaying = repoPlaying,
+                                    showOnlineRematch = showOnlineRematch,
+                                    onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
+                                )
                             }
+                        }
+                    }
+                }
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = innerPadding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 16.dp,
+                    extraBottom = 16.dp + extraBottomPadding,
+                    extraStart = 20.dp,
+                    extraEnd = 20.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    AdaptiveWidthItem {
+                        StatusPill(
+                            statusText = statusText,
+                            isActive = listenerEnabled && serviceConnected,
+                            onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
+                        )
+                    }
+                }
+
+                item {
+                    AdaptiveWidthItem {
+                        SectionLabel(
+                            title = stringResource(R.string.main_now_playing_title),
+                            subtitle = subtitleText
+                        )
+                    }
+                }
+
+                item {
+                    AdaptiveWidthItem {
+                        if (whitelistedSessions.isEmpty()) {
+                            IdleCard()
+                        } else {
+                            MaterialSessionPagerSection(
+                                sessions = whitelistedSessions,
+                                pagerState = sessionPagerState,
+                                compactLandscape = false,
+                                primaryToken = mediaCards.primaryToken,
+                                primaryMetadata = repoMetadata,
+                                primaryLyricText = primaryLyricText,
+                                primaryLyricSource = primaryLyricSourceText,
+                                primaryIsInstrumental = isCurrentTrackInstrumental,
+                                primaryHasTimeline = repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                primaryLyricResolveState = repoLyricResolveState,
+                                primaryAlbumArt = repoAlbumArt,
+                                primaryProgress = repoProgress,
+                                primaryIsPlaying = repoPlaying,
+                                showOnlineRematch = showOnlineRematch,
+                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MaterialSessionPagerSection(
+    sessions: List<MediaController>,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    compactLandscape: Boolean,
+    primaryToken: Any?,
+    primaryMetadata: LyricRepository.MediaInfo?,
+    primaryLyricText: String?,
+    primaryLyricSource: String?,
+    primaryIsInstrumental: Boolean,
+    primaryHasTimeline: Boolean,
+    primaryLyricResolveState: LyricRepository.LyricResolveState,
+    primaryAlbumArt: Bitmap?,
+    primaryProgress: LyricRepository.PlaybackProgress?,
+    primaryIsPlaying: Boolean?,
+    showOnlineRematch: Boolean,
+    onOpenOnlineLyricRematch: () -> Unit,
+) {
+    var maxCardHeightPx by remember(sessions.size, compactLandscape) { mutableIntStateOf(0) }
+    val minCardHeight = with(LocalDensity.current) {
+        if (maxCardHeightPx > 0) maxCardHeightPx.toDp() else 0.dp
+    }
+    Column {
+        HorizontalPager(
+            state = pagerState,
+            pageSpacing = 14.dp,
+            key = { sessions[it].sessionToken },
+        ) { page ->
+            val controller = sessions[page]
+            val isPrimary = controller.sessionToken == primaryToken
+            MediaSessionCard(
+                controller = controller,
+                isPrimary = isPrimary,
+                primaryMetadata = if (isPrimary) primaryMetadata else null,
+                primaryLyric = if (isPrimary) primaryLyricText else null,
+                primaryLyricSource = if (isPrimary) primaryLyricSource else null,
+                primaryIsInstrumental = isPrimary && primaryIsInstrumental,
+                primaryHasTimeline = isPrimary && primaryHasTimeline,
+                primaryLyricResolveState = primaryLyricResolveState,
+                primaryAlbumArt = if (isPrimary) primaryAlbumArt else null,
+                primaryProgress = if (isPrimary) primaryProgress else null,
+                primaryIsPlaying = if (isPrimary) primaryIsPlaying else null,
+                showOnlineLyricRematch = isPrimary && showOnlineRematch,
+                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
+                minCardHeight = minCardHeight,
+                onHeightMeasured = { measuredHeight ->
+                    if (measuredHeight > maxCardHeightPx) {
+                        maxCardHeightPx = measuredHeight
+                    }
+                },
+                compactLandscape = compactLandscape,
+            )
+        }
+        if (sessions.size > 1) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                repeat(sessions.size) { index ->
+                    val active = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .height(8.dp)
+                            .width(if (active) 28.dp else 8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (active) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                }
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MaterialHomeSessionSelectorCard(
+    sessions: List<MediaController>,
+    primaryToken: Any?,
+    selectedIndex: Int,
+    onSelectSession: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            sessions.forEachIndexed { index, controller ->
+                val selected = index == selectedIndex
+                var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
+                DisposableEffect(controller) {
+                    val callback = object : MediaController.Callback() {
+                        override fun onMetadataChanged(meta: MediaMetadata?) {
+                            localMetadata = meta
+                        }
+                    }
+                    controller.registerCallback(callback)
+                    onDispose { controller.unregisterCallback(callback) }
+                }
+                val appName = remember(controller.packageName) {
+                    ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
+                }
+                val title = localMetadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
+                val isPrimary = controller.sessionToken == primaryToken
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelectSession(index) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ComposeCanvas(modifier = Modifier.size(8.dp)) {
+                            drawCircle(
+                                color = if (isPrimary) StatusActive else Color.Gray.copy(alpha = 0.5f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = title?.takeIf { it.isNotBlank() } ?: appName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = appName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -480,7 +708,8 @@ private fun MediaSessionCard(
     showOnlineLyricRematch: Boolean,
     onOpenOnlineLyricRematch: () -> Unit,
     minCardHeight: Dp,
-    onHeightMeasured: (Int) -> Unit
+    onHeightMeasured: (Int) -> Unit,
+    compactLandscape: Boolean = false,
 ) {
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -564,7 +793,7 @@ private fun MediaSessionCard(
                 .fillMaxWidth()
                 .background(cardBackgroundColor)
         ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(if (compactLandscape) 16.dp else 20.dp)) {
             val context = LocalContext.current
             val appName = remember(controller.packageName) {
                 ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
@@ -585,133 +814,6 @@ private fun MediaSessionCard(
                 }
             }
             val openApp = { openMediaApp(context, controller, appName) }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickable(onClick = openApp)
-                ) {
-                    if (albumArt != null) {
-                        Image(
-                            bitmap = albumArt.asImageBitmap(),
-                            contentDescription = stringResource(R.string.main_album_art_cd),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize()
-                        )
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceDim,
-                            modifier = Modifier.matchParentSize()
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_music_note),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(24.dp)
-                            )
-                        }
-                    }
-
-                    if (appIcon != null) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 2.dp,
-                            shadowElevation = 2.dp,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(4.dp)
-                                .size(24.dp)
-                        ) {
-                            Image(
-                                bitmap = appIcon.asImageBitmap(),
-                                contentDescription = appName,
-                                modifier = Modifier.padding(4.dp),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)) {
-                        Text(
-                            text = appName,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = title ?: stringResource(R.string.media_control_unknown_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = artist ?: stringResource(R.string.media_control_unknown_artist),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    val primaryStatus = when {
-                        isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
-                        isPrimary && !primaryLyricSource.isNullOrBlank() -> {
-                            stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
-                        }
-                        else -> null
-                    }
-                    if (primaryStatus != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = primaryStatus,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-            LyricPanel(
-                lyric = lyric,
-                emptyText = if (isPrimary) {
-                    when {
-                        primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
-                        primaryHasTimeline -> stringResource(
-                            R.string.main_lyrics_sync_placeholder_fmt,
-                            formatPlaybackTime(position),
-                            formatPlaybackTime(duration)
-                        )
-                        primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
-                            stringResource(R.string.main_lyrics_not_found)
-                        else -> stringResource(R.string.main_waiting_for_lyrics)
-                    }
-                } else {
-                    stringResource(R.string.main_lyrics_unavailable)
-                }
-            )
-            if (showOnlineLyricRematch) {
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onOpenOnlineLyricRematch,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.online_lyric_rematch_entry))
-                }
-            }
-            Spacer(modifier = Modifier.height(18.dp))
 
             var isDragging by remember { mutableStateOf(false) }
             var dragProgress by remember { mutableFloatStateOf(0f) }
@@ -758,50 +860,222 @@ private fun MediaSessionCard(
                 if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
             }
 
-            MediaProgressBar(
-                value = currentProgress,
-                enabled = duration > 0,
-                isPlaying = isPlaying,
-                isDragging = isDragging,
-                onValueChange = {
-                    isDragging = true
-                    dragProgress = it
-                },
-                onValueChangeFinished = {
-                    if (duration > 0) {
-                        seekOriginPosition = position
-                        pendingSeekPosition = (dragProgress * duration).toLong()
-                        pendingSeekStartedAt = SystemClock.elapsedRealtime()
-                        controller.transportControls.seekTo(pendingSeekPosition)
-                    }
-                    isDragging = false
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RoundTransportButton(R.drawable.ic_skip_previous, stringResource(R.string.action_previous)) { controller.transportControls.skipToPrevious() }
-                FilledTonalButton(
-                    onClick = { if (isPlaying) controller.transportControls.pause() else controller.transportControls.play() },
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(18.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
-                        contentDescription = if (isPlaying) {
-                            stringResource(R.string.action_pause)
+            val trackHeaderContent: @Composable () -> Unit = {
+                val artSize = if (compactLandscape) 60.dp else 80.dp
+                val badgeSize = if (compactLandscape) 20.dp else 24.dp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(artSize)
+                            .clip(RoundedCornerShape(if (compactLandscape) 12.dp else 16.dp))
+                            .clickable(onClick = openApp)
+                    ) {
+                        if (albumArt != null) {
+                            Image(
+                                bitmap = albumArt.asImageBitmap(),
+                                contentDescription = stringResource(R.string.main_album_art_cd),
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize()
+                            )
                         } else {
-                            stringResource(R.string.action_play)
-                        },
-                        modifier = Modifier.size(24.dp)
-                    )
+                            Surface(
+                                shape = RoundedCornerShape(if (compactLandscape) 12.dp else 16.dp),
+                                color = MaterialTheme.colorScheme.surfaceDim,
+                                modifier = Modifier.matchParentSize()
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_music_note),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(if (compactLandscape) 16.dp else 24.dp)
+                                )
+                            }
+                        }
+
+                        if (appIcon != null) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 2.dp,
+                                shadowElevation = 2.dp,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(if (compactLandscape) 2.dp else 4.dp)
+                                    .size(badgeSize)
+                            ) {
+                                Image(
+                                    bitmap = appIcon.asImageBitmap(),
+                                    contentDescription = appName,
+                                    modifier = Modifier.padding(if (compactLandscape) 3.dp else 4.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(if (compactLandscape) 12.dp else 16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)) {
+                            Text(
+                                text = appName,
+                                modifier = Modifier.padding(
+                                    horizontal = if (compactLandscape) 8.dp else 10.dp,
+                                    vertical = if (compactLandscape) 3.dp else 6.dp
+                                ),
+                                style = if (compactLandscape) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(if (compactLandscape) 4.dp else 10.dp))
+                        Text(
+                            text = title ?: stringResource(R.string.media_control_unknown_title),
+                            style = if (compactLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(if (compactLandscape) 2.dp else 4.dp))
+                        Text(
+                            text = artist ?: stringResource(R.string.media_control_unknown_artist),
+                            style = if (compactLandscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val primaryStatus = when {
+                            isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
+                            isPrimary && !primaryLyricSource.isNullOrBlank() -> {
+                                stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
+                            }
+                            else -> null
+                        }
+                        if (primaryStatus != null) {
+                            Spacer(modifier = Modifier.height(if (compactLandscape) 4.dp else 8.dp))
+                            Text(
+                                text = primaryStatus,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
-                RoundTransportButton(R.drawable.ic_skip_next, stringResource(R.string.action_next)) { controller.transportControls.skipToNext() }
+            }
+
+            val lyricPanelContent: @Composable () -> Unit = {
+                LyricPanel(
+                    lyric = lyric,
+                    emptyText = if (isPrimary) {
+                        when {
+                            primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
+                            primaryHasTimeline -> stringResource(
+                                R.string.main_lyrics_sync_placeholder_fmt,
+                                formatPlaybackTime(position),
+                                formatPlaybackTime(duration)
+                            )
+                            primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
+                                stringResource(R.string.main_lyrics_not_found)
+                            else -> stringResource(R.string.main_waiting_for_lyrics)
+                        }
+                    } else {
+                        stringResource(R.string.main_lyrics_unavailable)
+                    }
+                )
+            }
+
+            val rematchButtonContent: @Composable (Modifier) -> Unit = { btnModifier ->
+                if (showOnlineLyricRematch) {
+                    OutlinedButton(
+                        onClick = onOpenOnlineLyricRematch,
+                        modifier = btnModifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.online_lyric_rematch_entry), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+
+            val sliderContent: @Composable () -> Unit = {
+                MediaProgressBar(
+                    value = currentProgress,
+                    enabled = duration > 0,
+                    isPlaying = isPlaying,
+                    isDragging = isDragging,
+                    onValueChange = {
+                        isDragging = true
+                        dragProgress = it
+                    },
+                    onValueChangeFinished = {
+                        if (duration > 0) {
+                            seekOriginPosition = position
+                            pendingSeekPosition = (dragProgress * duration).toLong()
+                            pendingSeekStartedAt = SystemClock.elapsedRealtime()
+                            controller.transportControls.seekTo(pendingSeekPosition)
+                        }
+                        isDragging = false
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            val transportRowContent: @Composable () -> Unit = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RoundTransportButton(R.drawable.ic_skip_previous, stringResource(R.string.action_previous)) { controller.transportControls.skipToPrevious() }
+                    FilledTonalButton(
+                        onClick = { if (isPlaying) controller.transportControls.pause() else controller.transportControls.play() },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(if (compactLandscape) 12.dp else 18.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
+                            contentDescription = if (isPlaying) {
+                                stringResource(R.string.action_pause)
+                            } else {
+                                stringResource(R.string.action_play)
+                            },
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    RoundTransportButton(R.drawable.ic_skip_next, stringResource(R.string.action_next)) { controller.transportControls.skipToNext() }
+                }
+            }
+
+            if (compactLandscape) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(0.46f)) {
+                        trackHeaderContent()
+                        rematchButtonContent(Modifier.padding(top = 8.dp))
+                    }
+                    Box(modifier = Modifier.weight(0.54f)) {
+                        lyricPanelContent()
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                sliderContent()
+                Spacer(modifier = Modifier.height(8.dp))
+                transportRowContent()
+            } else {
+                trackHeaderContent()
+                Spacer(modifier = Modifier.height(18.dp))
+                lyricPanelContent()
+                rematchButtonContent(Modifier.padding(top = 12.dp))
+                Spacer(modifier = Modifier.height(18.dp))
+                sliderContent()
+                Spacer(modifier = Modifier.height(14.dp))
+                transportRowContent()
             }
         }
         }

@@ -26,16 +26,23 @@ import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixReorderableListItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
@@ -55,6 +62,7 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Close
@@ -69,7 +77,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun MiuixFloatingLyricsSettingsSubScreen(
     prefs: SharedPreferences,
     scope: CoroutineScope,
-    settingModifier: @Composable (String) -> Modifier = { Modifier }
+    settingModifier: @Composable (String) -> Modifier = { Modifier },
+    twoPanePreview: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(),
+    scrollBehavior: ScrollBehavior? = null,
+    footerContent: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -142,26 +154,37 @@ fun MiuixFloatingLyricsSettingsSubScreen(
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    FloatingLyricsSettingsPreview(
-        style = FloatingLyricsStyle(
-            textSizeSp = textSizeSp,
-            textWeight = textWeight,
-            baseTextColor = customTextColor.toArgb(),
-            followAlbumColor = followAlbumColor,
-            showAlbumArt = showAlbumArt,
-            enableTextStroke = textStroke,
-            enableTextBackground = textBackground
-        ),
-        display = FloatingLyricsDisplayConfig(
-            secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
-            showSecondLine = showSecondLine,
-            neighborAlignment = neighborAlignment,
-            wordHighlight = wordHighlight
-        ),
-        useMiuix = true
-    )
+    val previewContent: @Composable (Modifier) -> Unit = { previewModifier ->
+        Box(modifier = previewModifier, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().widthIn(max = 380.dp)) {
+                FloatingLyricsSettingsPreview(
+                    style = FloatingLyricsStyle(
+                        textSizeSp = textSizeSp,
+                        textWeight = textWeight,
+                        baseTextColor = customTextColor.toArgb(),
+                        followAlbumColor = followAlbumColor,
+                        showAlbumArt = showAlbumArt,
+                        enableTextStroke = textStroke,
+                        enableTextBackground = textBackground
+                    ),
+                    display = FloatingLyricsDisplayConfig(
+                        secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
+                        showSecondLine = showSecondLine,
+                        neighborAlignment = neighborAlignment,
+                        wordHighlight = wordHighlight
+                    ),
+                    useMiuix = true
+                )
+            }
+        }
+    }
 
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    val settingsCardContent: @Composable () -> Unit = {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (twoPanePreview) Modifier else Modifier.padding(horizontal = 12.dp))
+        ) {
         SuperSwitch(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             summary = stringResource(R.string.settings_floating_lyrics_enabled_desc),
@@ -335,6 +358,52 @@ fun MiuixFloatingLyricsSettingsSubScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = ButtonDefaults.textButtonColorsPrimary()
         )
+        }
+    }
+
+    if (twoPanePreview) {
+        val layoutDirection = LocalLayoutDirection.current
+        AdaptiveTwoPane(
+            startWeight = 0.40f,
+            spacing = 16.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection) + 12.dp,
+                    end = contentPadding.calculateEndPadding(layoutDirection) + 12.dp
+                ),
+            startPane = {
+                previewContent(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding(),
+                            bottom = contentPadding.calculateBottomPadding()
+                        )
+                )
+            },
+            endPane = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .let { if (scrollBehavior != null) it.miuixPageScroll(scrollBehavior) else it },
+                    contentPadding = PaddingValues(
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+                ) {
+                    item { settingsCardContent() }
+                    if (footerContent != null) {
+                        item { footerContent() }
+                    }
+                }
+            }
+        )
+    } else {
+        previewContent(Modifier.fillMaxWidth())
+        settingsCardContent()
+        footerContent?.invoke()
     }
 
     MiuixBlurBottomSheet(

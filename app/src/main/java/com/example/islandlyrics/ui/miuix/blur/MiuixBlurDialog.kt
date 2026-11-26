@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.captionBarPadding
@@ -52,11 +53,15 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -129,14 +134,34 @@ fun MiuixBlurDialog(
     }
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
     val windowInfo = LocalWindowInfo.current
-    val isLargeScreen = remember(windowInfo.containerDpSize) {
-        windowInfo.containerDpSize.height >= 480.dp && windowInfo.containerDpSize.width >= 840.dp
+    val isCenteredDialog = remember(windowInfo.containerDpSize) {
+        windowInfo.containerDpSize.width >= 600.dp ||
+            windowInfo.containerDpSize.width > windowInfo.containerDpSize.height
+    }
+    val maxDialogWidth = remember(windowInfo.containerDpSize) {
+        if (windowInfo.containerDpSize.width > windowInfo.containerDpSize.height &&
+            windowInfo.containerDpSize.width >= 600.dp
+        ) {
+            500.dp
+        } else {
+            420.dp
+        }
     }
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val captionBarPadding = WindowInsets.captionBar.asPaddingValues().calculateTopPadding()
     val displayCutoutPadding = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val topInset = remember(statusBarPadding, captionBarPadding, displayCutoutPadding) {
         maxOf(statusBarPadding, captionBarPadding, displayCutoutPadding)
+    }
+    val maxDialogHeight = remember(
+        windowInfo.containerDpSize.height,
+        topInset,
+        navBarBottomPadding,
+        outsideMargin.height
+    ) {
+        (windowInfo.containerDpSize.height - topInset - navBarBottomPadding - outsideMargin.height - 16.dp)
+            .coerceAtLeast(220.dp)
     }
     val borderColor = if (isLightPanel) {
         Color.White
@@ -210,6 +235,7 @@ fun MiuixBlurDialog(
                                 .imePadding()
                                 .navigationBarsPadding()
                                 .captionBarPadding()
+                                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                         } else {
                             Modifier
                         }
@@ -224,8 +250,9 @@ fun MiuixBlurDialog(
                     .padding(top = topInset, bottom = outsideMargin.height)
             ) {
                 val panelModifier = Modifier
-                    .align(if (isLargeScreen) Alignment.Center else Alignment.BottomCenter)
-                    .widthIn(max = 420.dp)
+                    .align(if (isCenteredDialog) Alignment.Center else Alignment.BottomCenter)
+                    .widthIn(max = maxDialogWidth)
+                    .heightIn(max = maxDialogHeight)
                     .fillMaxWidth()
                     .then(modifier)
                     .graphicsLayer {

@@ -91,12 +91,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.rules.FieldOrder
@@ -125,9 +128,12 @@ fun ParserRuleEditorScreen(
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
     onSaved: (ParserRule) -> Unit,
-    onOpenFaq: (() -> Unit)? = null
+    onOpenFaq: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
     val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
@@ -211,12 +217,16 @@ fun ParserRuleEditorScreen(
                         }
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        onBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(onClick = {
+                            onBack()
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
+                } else {
+                    null
                 },
                 actions = {
                     IconButton(onClick = {
@@ -249,11 +259,20 @@ fun ParserRuleEditorScreen(
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = layoutInfo.maxReadableWidth)
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection) + 16.dp,
+                    end = padding.calculateEndPadding(layoutDirection) + 16.dp
+                )
         ) {
             Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             Spacer(modifier = Modifier.height(8.dp))
@@ -313,6 +332,7 @@ fun ParserRuleEditorScreen(
             }
             Spacer(modifier = Modifier.height(24.dp))
             Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
+        }
         }
     }
 

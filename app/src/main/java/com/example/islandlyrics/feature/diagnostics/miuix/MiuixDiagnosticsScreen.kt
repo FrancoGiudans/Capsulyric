@@ -46,6 +46,8 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -57,7 +59,8 @@ import java.util.*
 @Composable
 fun MiuixDiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenLogViewer: (() -> Unit)? = null
+    onOpenLogViewer: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val currentLocale = LocalConfiguration.current.locales[0]
@@ -71,23 +74,38 @@ fun MiuixDiagnosticsScreen(
                 title = stringResource(R.string.title_diagnostics),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            )
-        ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                )
+            ) {
             if (BuildConfig.DEBUG) {
                 item { SmallTitle(text = stringResource(R.string.diag_header_debug_tools)) }
                 item {
@@ -225,6 +243,7 @@ fun MiuixDiagnosticsScreen(
                     )
                 }
             }
+        }
         }
 
         // SuperDialog must be a sibling to LazyColumn inside Scaffold lambda

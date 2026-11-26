@@ -68,6 +68,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -78,14 +80,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
 import com.example.islandlyrics.core.settings.search.SettingsSearchAction
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
 import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.ui.miuix.search.miuixSettingHighlight
 import kotlinx.coroutines.delay
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,6 +126,7 @@ fun MiuixCustomSettingsScreen(
     initialTab: CustomSettingsTab? = null,
     targetItemKey: String? = null,
     onNavigate: ((com.example.islandlyrics.core.settings.search.SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -444,6 +453,15 @@ fun MiuixCustomSettingsScreen(
         customThemeGlobalTintEnabled = customThemeGlobalTintEnabled
     )
 
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val hasStartRail = LocalAdaptiveHasStartRail.current
+    val twoPanePreview = layoutInfo.useTwoPanePreview
+    val tabMaxWidth = if (layoutInfo.useNavigationRail) 144.dp else 96.dp
+    val tabCutoutInsets = WindowInsets.displayCutout.only(
+        if (hasStartRail) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+    )
+
     MiuixTheme(controller = previewController) {
         MiuixBlurScaffold(
             topBar = {
@@ -451,17 +469,21 @@ fun MiuixCustomSettingsScreen(
                     title = title,
                     largeTitle = title,
                     scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        androidx.compose.material3.IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.padding(start = 12.dp)
-                        ) {
-                            MiuixBackIcon(contentDescription = "Back")
+                    navigationIcon = if (showBackButton) {
+                        {
+                            androidx.compose.material3.IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.padding(start = 12.dp)
+                            ) {
+                                MiuixBackIcon(contentDescription = "Back")
+                            }
                         }
+                    } else {
+                        {}
                     },
                     bottomContent = {
                         if (tabLabels.size > 1) {
-                            Column {
+                            Column(modifier = Modifier.windowInsetsPadding(tabCutoutInsets)) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 TabRowWithContour(
                                     tabs = tabLabels,
@@ -478,7 +500,7 @@ fun MiuixCustomSettingsScreen(
                                         selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
                                         selectedContentColor = MiuixTheme.colorScheme.onBackground
                                     ),
-                                    maxWidth = 96.dp
+                                    maxWidth = tabMaxWidth
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
@@ -494,6 +516,7 @@ fun MiuixCustomSettingsScreen(
                 val listState = rememberLazyListState()
                 val currentTab = orderedTabs[page]
                 val targetBringIntoViewRequester = remember { BringIntoViewRequester() }
+                val scrollOffsetAdjustment = if (twoPanePreview) 2 else 0
 
                 @Composable
                 fun settingModifier(key: String): Modifier {
@@ -509,7 +532,7 @@ fun MiuixCustomSettingsScreen(
                     )
                 }
 
-                LaunchedEffect(activeHighlightKey, pagerState.currentPage, superIslandEnabled) {
+                LaunchedEffect(activeHighlightKey, pagerState.currentPage, superIslandEnabled, twoPanePreview) {
                     val key = activeHighlightKey
                     if (key != null && pagerState.currentPage == page) {
                         val scrollIndex = when (currentTab) {
@@ -526,13 +549,14 @@ fun MiuixCustomSettingsScreen(
                             }
                             CustomSettingsTab.CAPSULE -> when (key) {
                                 "key_super_island_small_island_show_progress_bar",
-                                "key_super_island_collapsed_right_progress_ring" -> if (superIslandEnabled) 2 else null
+                                "key_super_island_collapsed_right_progress_ring" ->
+                                    if (superIslandEnabled) (2 - scrollOffsetAdjustment).coerceAtLeast(0) else null
                                 "key_disable_scrolling", "key_lyric_text_display_mode", "key_oneui_capsule_color",
                                 "key_capsule_mode", "key_super_island_lyric_mode", "key_super_island_show_left_cover",
                                 "key_super_island_right_calibration", "key_super_island_colorize",
                                 "key_super_island_color_source", "key_super_island_share",
                                 "key_super_island_share_format", "key_block_xmsf", "key_icon_style" ->
-                                    if (superIslandEnabled) 4 else 2
+                                    ((if (superIslandEnabled) 4 else 2) - scrollOffsetAdjustment).coerceAtLeast(0)
                                 else -> null
                             }
                             CustomSettingsTab.NOTIFICATION -> when (key) {
@@ -542,51 +566,83 @@ fun MiuixCustomSettingsScreen(
                                 "key_super_island_template18_text_modes", "key_super_island_template18_button_action",
                                 "key_super_island_show_progress_bar", "key_super_island_secondary_text_mode",
                                 "key_super_island_template2_pic_source", "key_super_island_template2_pic_custom_pick",
-                                "key_lock_screen_hide_notification", "key_click_action", "key_dismiss_delay" -> 2
+                                "key_lock_screen_hide_notification", "key_click_action", "key_dismiss_delay" ->
+                                    (2 - scrollOffsetAdjustment).coerceAtLeast(0)
                                 else -> null
                             }
                             CustomSettingsTab.DESKTOP_LYRICS -> if (key.startsWith("key_floating_")) 0 else null
                         }
-                        if (scrollIndex != null) {
+                        if (scrollIndex != null && !(twoPanePreview && currentTab == CustomSettingsTab.DESKTOP_LYRICS)) {
                             listState.animateScrollToItem(scrollIndex)
+                            delay(150)
+                            targetBringIntoViewRequester.bringIntoView()
+                        } else if (scrollIndex != null) {
                             delay(150)
                             targetBringIntoViewRequester.bringIntoView()
                         }
                     }
                 }
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .miuixPageScroll(scrollBehavior),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 12.dp,
-                        bottom = padding.calculateBottomPadding() + 24.dp
+                val capsulePreviewBlock: @Composable () -> Unit = {
+                    val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
+                    CapsulePreview(
+                        dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
+                        iconStyle = previewIconStyle,
+                        oneuiCapsuleColorMode = oneuiCapsuleColorMode,
+                        superIslandEnabled = superIslandEnabled,
+                        superIslandLyricMode = superIslandLyricMode,
+                        superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                        superIslandStandardShowLeftCover = superIslandStandardShowLeftCover,
+                        superIslandColorSource = superIslandColorSource,
+                        superIslandCustomColor = superIslandCustomColor,
+                        superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                        superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                        rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
+                            superIslandCollapsedRightProgressRing,
+                        showBorder = previewIsDarkTheme
                     )
+                }
+
+                val notificationPreviewBlock: @Composable () -> Unit = {
+                    NotificationPreview(
+                        progressColorEnabled = progressColorEnabled,
+                        actionStyle = effectiveActionStyle,
+                        superIslandEnabled = superIslandEnabled,
+                        superIslandColorSource = superIslandColorSource,
+                        superIslandCustomColor = superIslandCustomColor,
+                        superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                        superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                        superIslandMediaButtonLayout = superIslandMediaButtonLayout,
+                        superIslandNotificationStyle = superIslandNotificationStyle,
+                        superIslandLyricMode = superIslandLyricMode,
+                        superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                        showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
+                        template2PicSource = template2PicSource,
+                        showBorder = previewIsDarkTheme,
+                        superIslandSecondaryTextModes = secondaryTextModes,
+                        template18SecondaryTextModes = superIslandTemplate18TextModes,
+                        template18ButtonAction = superIslandTemplate18ButtonAction,
+                        previewDarkTheme = previewIsDarkTheme
+                    )
+                }
+
+                val singlePaneHorizontalExtra = if (
+                    !twoPanePreview && layoutInfo.widthDp > layoutInfo.maxReadableWidth
                 ) {
+                    (layoutInfo.widthDp - layoutInfo.maxReadableWidth) / 2
+                } else {
+                    0.dp
+                }
+
+                val tabListContent: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
                 when (currentTab) {
                         CustomSettingsTab.CAPSULE -> { // Capsule
-                            item {
-                                val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
-                                CapsulePreview(
-                                    dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
-                                    iconStyle = previewIconStyle,
-                                    oneuiCapsuleColorMode = oneuiCapsuleColorMode,
-                                    superIslandEnabled = superIslandEnabled,
-                                    superIslandLyricMode = superIslandLyricMode,
-                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                    superIslandStandardShowLeftCover = superIslandStandardShowLeftCover,
-                                    superIslandColorSource = superIslandColorSource,
-                                    superIslandCustomColor = superIslandCustomColor,
-                                    superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                    superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
-                                    rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
-                                        superIslandCollapsedRightProgressRing,
-                                    showBorder = previewIsDarkTheme
-                                )
+                            if (!twoPanePreview) {
+                                item {
+                                    capsulePreviewBlock()
+                                }
+                                item { Spacer(modifier = Modifier.height(16.dp)) }
                             }
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
                             if (superIslandEnabled) {
                                 item {
                                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -1083,29 +1139,12 @@ fun MiuixCustomSettingsScreen(
                             }
                         }
                         CustomSettingsTab.NOTIFICATION -> { // Notification
-                            item {
-                                NotificationPreview(
-                                    progressColorEnabled = progressColorEnabled,
-                                     actionStyle = effectiveActionStyle,
-                                     superIslandEnabled = superIslandEnabled,
-                                     superIslandColorSource = superIslandColorSource,
-                                     superIslandCustomColor = superIslandCustomColor,
-                                     superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                     superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
-                                     superIslandMediaButtonLayout = superIslandMediaButtonLayout,
-                                    superIslandNotificationStyle = superIslandNotificationStyle,
-                                    superIslandLyricMode = superIslandLyricMode,
-                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                    showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
-                                    template2PicSource = template2PicSource,
-                                    showBorder = previewIsDarkTheme,
-                                    superIslandSecondaryTextModes = secondaryTextModes,
-                                    template18SecondaryTextModes = superIslandTemplate18TextModes,
-                                    template18ButtonAction = superIslandTemplate18ButtonAction,
-                                    previewDarkTheme = previewIsDarkTheme
-                                )
+                            if (!twoPanePreview) {
+                                item {
+                                    notificationPreviewBlock()
+                                }
+                                item { Spacer(modifier = Modifier.height(16.dp)) }
                             }
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     // 旧版「通知按键」仅保留给非超级岛（实时更新胶囊）使用
@@ -1803,15 +1842,59 @@ fun MiuixCustomSettingsScreen(
                                 )
                             }
                         }
-                    CustomSettingsTab.DESKTOP_LYRICS -> { // Desktop Lyrics
-                        item {
-                            MiuixFloatingLyricsSettingsSubScreen(
-                                prefs = prefs,
-                                scope = scope,
-                                settingModifier = { settingModifier(it) }
-                            )
+                        CustomSettingsTab.DESKTOP_LYRICS -> { // Desktop Lyrics
+                            item {
+                                MiuixFloatingLyricsSettingsSubScreen(
+                                    prefs = prefs,
+                                    scope = scope,
+                                    settingModifier = { settingModifier(it) }
+                                )
+                            }
+                            item {
+                                MiuixLookingForOtherSettings(
+                                    links = listOf(
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_capsule,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.CAPSULE
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_notification,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.NOTIFICATION
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.page_title_personalization,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.APP_UI
+                                            )
+                                        )
+                                    ),
+                                    onNavigate = handleNavigate,
+                                    modifier = Modifier.padding(top = 12.dp)
+                                )
+                            }
                         }
-                        item {
+                    }
+                }
+
+                if (twoPanePreview && currentTab == CustomSettingsTab.DESKTOP_LYRICS) {
+                    MiuixFloatingLyricsSettingsSubScreen(
+                        prefs = prefs,
+                        scope = scope,
+                        settingModifier = { settingModifier(it) },
+                        twoPanePreview = true,
+                        contentPadding = padding.adaptiveContentPadding(
+                            layoutDirection = layoutDirection,
+                            extraTop = 12.dp,
+                            extraBottom = 24.dp
+                        ),
+                        scrollBehavior = scrollBehavior,
+                        footerContent = {
                             MiuixLookingForOtherSettings(
                                 links = listOf(
                                     OtherSettingLink(
@@ -1839,7 +1922,67 @@ fun MiuixCustomSettingsScreen(
                                 modifier = Modifier.padding(top = 12.dp)
                             )
                         }
-                    }
+                    )
+                } else if (
+                    twoPanePreview &&
+                    (currentTab == CustomSettingsTab.CAPSULE || currentTab == CustomSettingsTab.NOTIFICATION)
+                ) {
+                    AdaptiveTwoPane(
+                        startWeight = 0.40f,
+                        spacing = 16.dp,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                start = padding.calculateStartPadding(layoutDirection) + 12.dp,
+                                end = padding.calculateEndPadding(layoutDirection) + 12.dp
+                            ),
+                        startPane = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(
+                                        top = padding.calculateTopPadding() + 12.dp,
+                                        bottom = padding.calculateBottomPadding() + 24.dp
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (currentTab == CustomSettingsTab.CAPSULE) {
+                                    capsulePreviewBlock()
+                                } else {
+                                    notificationPreviewBlock()
+                                }
+                            }
+                        },
+                        endPane = {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .miuixPageScroll(scrollBehavior),
+                                contentPadding = PaddingValues(
+                                    top = padding.calculateTopPadding() + 12.dp,
+                                    bottom = padding.calculateBottomPadding() + 24.dp
+                                ),
+                                content = tabListContent
+                            )
+                        }
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .miuixPageScroll(scrollBehavior),
+                        contentPadding = padding.adaptiveContentPadding(
+                            layoutDirection = layoutDirection,
+                            extraTop = 12.dp,
+                            extraBottom = 24.dp,
+                            extraStart = singlePaneHorizontalExtra,
+                            extraEnd = singlePaneHorizontalExtra
+                        ),
+                        content = tabListContent
+                    )
                 }
             }
         }
@@ -1880,7 +2023,6 @@ fun MiuixCustomSettingsScreen(
             )
         }
     }
-}
 }
 
 @Composable
@@ -2254,6 +2396,7 @@ fun MiuixCapsuleNotificationScreen(
     initialTab: CustomSettingsTab? = null,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
@@ -2263,6 +2406,7 @@ fun MiuixCapsuleNotificationScreen(
         initialTab = initialTab,
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }
@@ -2272,6 +2416,7 @@ fun MiuixAppUiScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
@@ -2280,6 +2425,7 @@ fun MiuixAppUiScreen(
         tabs = setOf(CustomSettingsTab.APP_UI),
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }
@@ -2289,6 +2435,7 @@ fun MiuixDesktopLyricsScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
@@ -2297,6 +2444,7 @@ fun MiuixDesktopLyricsScreen(
         tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }

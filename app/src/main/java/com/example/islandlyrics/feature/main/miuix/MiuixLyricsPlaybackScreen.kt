@@ -56,6 +56,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -142,6 +143,7 @@ import com.example.islandlyrics.feature.main.selectHomePlaybackController
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricAlignment
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
@@ -269,7 +271,8 @@ private fun LyricsPlaybackContent(
     onOpenOnlineLyricRematch: () -> Unit,
 ) {
     val context = LocalContext.current
-    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val layoutInfo = LocalAppWindowLayout.current
+    val landscape = layoutInfo.isLandscape && layoutInfo.widthDp >= 560.dp
     val repo = remember { LyricRepository.getInstance() }
     val reportedTrack = repo.liveMetadata.observeAsState(start.track)
     val track by remember(reportedTrack) {
@@ -889,11 +892,24 @@ private fun LandscapeLyricsPlaybackLayout(
             val spaceFraction = ((maxHeight - 260.dp) / 160.dp).coerceIn(0f, 1f)
             // Lyrics already have 12 dp of vertical row padding.
             val rowSpacing = if (hasSubLyrics) lerp(6f, 8f, spaceFraction).dp else lerp(16f, 20f, spaceFraction).dp
-            lyrics(
-                Modifier.fadeLyricsAroundBars(0.dp, rememberUpdatedState(0.dp), topFade, bottomFade),
-                PaddingValues(top = anchor, bottom = trailingSpace),
-                rowSpacing,
-            )
+            val constrainLyricsWidth = maxWidth > 600.dp
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth()
+                        .then(if (constrainLyricsWidth) Modifier.widthIn(max = 600.dp) else Modifier),
+                ) {
+                    lyrics(
+                        Modifier.fadeLyricsAroundBars(0.dp, rememberUpdatedState(0.dp), topFade, bottomFade),
+                        PaddingValues(top = anchor, bottom = trailingSpace),
+                        rowSpacing,
+                    )
+                }
+            }
             if (followButton != null) {
                 Box(Modifier.align(Alignment.TopEnd).revealPlaybackChrome(expansionProgress)) {
                     followButton()
@@ -915,7 +931,7 @@ private fun LandscapePlaybackPanel(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier) {
-        val coverLimit = minOf(maxWidth * 0.68f, maxHeight * 0.46f)
+        val coverLimit = minOf(maxWidth * 0.68f, maxHeight * 0.46f, 320.dp)
         Layout(
             modifier = Modifier.fillMaxSize(),
             contents = listOf(
@@ -949,7 +965,7 @@ private fun LandscapePlaybackPanel(
             val available = metadataHeightLimit - trackHeight
             val gap = minOf(16.dp.roundToPx(), available / 4)
             val coverSize = minOf(coverLimit.roundToPx(), available - 2 * gap, safeWidth)
-            val controlsWidth = minOf(maxOf(coverSize, 250.dp.roundToPx()), (width * 0.85f).toInt(), safeWidth)
+            val controlsWidth = minOf(maxOf(coverSize, 250.dp.roundToPx()), (width * 0.85f).toInt(), safeWidth, 400.dp.roundToPx())
             val centeredControlsStart = (width - controlsWidth) / 2
             // Only shift the group if the centered controls would overlap the cutout.
             val controlsStart = maxOf(centeredControlsStart, safeStart)

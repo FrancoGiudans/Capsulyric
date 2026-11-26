@@ -74,12 +74,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
@@ -159,9 +164,14 @@ internal fun MiuixSettingsScreen(
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
-    onUpdateIgnore: (String) -> Unit = {}
+    onUpdateIgnore: (String) -> Unit = {},
+    isMasterPane: Boolean = false,
+    selectedDetailTarget: SettingsNavigationTarget? = null,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val hasStartRail = LocalAdaptiveHasStartRail.current
     val focusManager = LocalFocusManager.current
     val resources = LocalResources.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
@@ -658,48 +668,61 @@ internal fun MiuixSettingsScreen(
                         label = "MiuixSettingsSearchCapsuleColor",
                     )
 
-                    SearchBar(
+                    val searchCutoutInsets = WindowInsets.displayCutout.only(
+                        if (hasStartRail) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+                    )
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
-                        inputField = {
-                            InputField(
-                                query = settingsSearchQuery,
-                                onQueryChange = { settingsSearchQuery = it },
-                                onSearch = { },
-                                expanded = settingsSearchExpanded,
-                                onExpandedChange = { settingsSearchExpanded = it },
-                                label = stringResource(R.string.settings_search),
-                                color = searchCapsuleColor,
-                                interactionSource = searchInteractionSource,
-                            )
-                        },
-                        outsideEndAction = {
-                            Box(
-                                modifier = Modifier
-                                    .heightIn(min = 44.dp)
-                                    .clickable(
-                                        interactionSource = null,
-                                        indication = null,
-                                    ) {
-                                        settingsSearchExpanded = false
-                                        settingsSearchQuery = ""
-                                        focusManager.clearFocus()
-                                    }
-                                    .padding(start = 12.dp, end = 4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.backup_dialog_cancel),
-                                    style = MiuixTheme.textStyles.main,
-                                    color = MiuixTheme.colorScheme.primary,
+                            .then(if (isMasterPane) Modifier else Modifier.windowInsetsPadding(searchCutoutInsets)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SearchBar(
+                            modifier = Modifier
+                                .then(
+                                    if (isMasterPane) Modifier.fillMaxWidth()
+                                    else Modifier.widthIn(max = layoutInfo.maxReadableWidth).fillMaxWidth()
                                 )
-                            }
-                        },
-                        insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
-                        expanded = settingsSearchExpanded,
-                        onExpandedChange = { settingsSearchExpanded = it }
-                    ) { }
+                                .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
+                            inputField = {
+                                InputField(
+                                    query = settingsSearchQuery,
+                                    onQueryChange = { settingsSearchQuery = it },
+                                    onSearch = { },
+                                    expanded = settingsSearchExpanded,
+                                    onExpandedChange = { settingsSearchExpanded = it },
+                                    label = stringResource(R.string.settings_search),
+                                    color = searchCapsuleColor,
+                                    interactionSource = searchInteractionSource,
+                                )
+                            },
+                            outsideEndAction = {
+                                Box(
+                                    modifier = Modifier
+                                        .heightIn(min = 44.dp)
+                                        .clickable(
+                                            interactionSource = null,
+                                            indication = null,
+                                        ) {
+                                            settingsSearchExpanded = false
+                                            settingsSearchQuery = ""
+                                            focusManager.clearFocus()
+                                        }
+                                        .padding(start = 12.dp, end = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.backup_dialog_cancel),
+                                        style = MiuixTheme.textStyles.main,
+                                        color = MiuixTheme.colorScheme.primary,
+                                    )
+                                }
+                            },
+                            insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
+                            expanded = settingsSearchExpanded,
+                            onExpandedChange = { settingsSearchExpanded = it }
+                        ) { }
+                    }
                 }
             )
         },
@@ -719,15 +742,40 @@ internal fun MiuixSettingsScreen(
         },
         bottomBar = bottomBar,
     ) { padding ->
+        val singlePaneHorizontalExtra = if (!isMasterPane && layoutInfo.widthDp > layoutInfo.maxReadableWidth) {
+            (layoutInfo.widthDp - layoutInfo.maxReadableWidth) / 2
+        } else {
+            0.dp
+        }
+        val masterHighlightColor = MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)
+        val masterRowModifier: (SettingsNavigationTarget) -> Modifier = { target ->
+            if (isMasterPane && selectedDetailTarget == target) {
+                Modifier.background(masterHighlightColor)
+            } else {
+                Modifier
+            }
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 4.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp + extraBottomPadding
-            )
+            contentPadding = if (isMasterPane) {
+                PaddingValues(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    top = padding.calculateTopPadding() + 4.dp,
+                    end = 4.dp,
+                    bottom = padding.calculateBottomPadding() + 24.dp + extraBottomPadding
+                )
+            } else {
+                padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 4.dp,
+                    extraBottom = 24.dp + extraBottomPadding,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                )
+            }
         ) {
             if (settingsSearchExpanded) {
                 if (settingsSearchQuery.isBlank()) {
@@ -851,10 +899,12 @@ internal fun MiuixSettingsScreen(
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
                         title = stringResource(R.string.settings_capsule_notification),
+                        modifier = masterRowModifier(SettingsNavigationTarget.CAPSULE_NOTIFICATION),
                         onClick = onOpenCapsuleNotification
                     )
                     SuperArrow(
                         title = stringResource(R.string.settings_floating_lyrics),
+                        modifier = masterRowModifier(SettingsNavigationTarget.DESKTOP_LYRICS),
                         onClick = {
                             onOpenDesktopLyrics?.invoke()
                                 ?: onOpenCustomSettings()
@@ -862,6 +912,7 @@ internal fun MiuixSettingsScreen(
                     )
                     SuperArrow(
                         title = stringResource(R.string.page_title_personalization),
+                        modifier = masterRowModifier(SettingsNavigationTarget.APP_UI),
                         onClick = onOpenCustomSettings
                     )
                 }
@@ -874,12 +925,14 @@ internal fun MiuixSettingsScreen(
                     SuperArrow(
                         title = stringResource(R.string.settings_local_lyrics_title),
                         summary = stringResource(R.string.settings_local_lyrics_directories),
+                        modifier = masterRowModifier(SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES),
                         onClick = onOpenLocalLyricDirectories
                     )
                     if (!offlineModeEnabled) {
                         SuperArrow(
                             title = stringResource(R.string.online_lyric_rematch_title),
                             summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                            modifier = masterRowModifier(SettingsNavigationTarget.ONLINE_LYRIC_REMATCH),
                             onClick = {
                                 onOpenOnlineLyricRematch?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
@@ -888,6 +941,7 @@ internal fun MiuixSettingsScreen(
                         SuperArrow(
                             title = stringResource(R.string.apple_music_settings_title),
                             summary = stringResource(R.string.apple_music_settings_summary),
+                            modifier = masterRowModifier(SettingsNavigationTarget.APPLE_MUSIC),
                             onClick = {
                                 handleSettingsAction(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
                             }
@@ -947,6 +1001,7 @@ internal fun MiuixSettingsScreen(
                         SuperArrow(
                             title = stringResource(R.string.lastfm_title),
                             summary = stringResource(R.string.lastfm_settings_summary),
+                            modifier = masterRowModifier(SettingsNavigationTarget.LAST_FM),
                             onClick = {
                                 onOpenLastFm?.invoke()
                                     ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
@@ -963,6 +1018,7 @@ internal fun MiuixSettingsScreen(
                     SuperArrow(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
+                        modifier = masterRowModifier(SettingsNavigationTarget.CACHE_MANAGEMENT),
                         onClick = {
                             onOpenCacheManagement?.invoke()
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
@@ -1102,6 +1158,7 @@ internal fun MiuixSettingsScreen(
                     SuperArrow(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
+                        modifier = masterRowModifier(SettingsNavigationTarget.FAQ),
                         onClick = {
                             onOpenFaq?.invoke()
                                 ?: context.startActivity(Intent(context, FAQActivity::class.java))
@@ -1110,6 +1167,7 @@ internal fun MiuixSettingsScreen(
                     if (!offlineModeEnabled) {
                         SuperArrow(
                             title = stringResource(R.string.settings_community_header),
+                            modifier = masterRowModifier(SettingsNavigationTarget.COMMUNITY),
                             onClick = {
                                 onOpenCommunity?.invoke()
                             }
@@ -1118,6 +1176,7 @@ internal fun MiuixSettingsScreen(
                     SuperArrow(
                         title = stringResource(R.string.about_title),
                         summary = stringResource(R.string.settings_about_capsulyric),
+                        modifier = masterRowModifier(SettingsNavigationTarget.ABOUT),
                         onClick = {
                             onOpenAbout?.invoke()
                                 ?: context.startActivity(Intent(context, AboutActivity::class.java))
@@ -1133,11 +1192,13 @@ internal fun MiuixSettingsScreen(
                         SuperArrow(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
+                            modifier = masterRowModifier(SettingsNavigationTarget.DIAGNOSTICS),
                             onClick = onShowDiagnostics
                         )
                         SuperArrow(
                             title = stringResource(R.string.title_lab),
                             summary = stringResource(R.string.diag_lab_page_desc),
+                            modifier = masterRowModifier(SettingsNavigationTarget.LAB),
                             onClick = {
                                 onOpenLab?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))

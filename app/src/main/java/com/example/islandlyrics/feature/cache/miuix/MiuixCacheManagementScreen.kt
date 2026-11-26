@@ -76,6 +76,9 @@ import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -112,7 +115,8 @@ import java.util.Locale
 @Composable
 fun MiuixCacheManagementScreen(
     onBack: () -> Unit,
-    viewModel: CacheManagementViewModel = viewModel()
+    viewModel: CacheManagementViewModel = viewModel(),
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -181,7 +185,7 @@ fun MiuixCacheManagementScreen(
                         IconButton(onClick = { viewModel.exitSelectionMode() }, modifier = Modifier.padding(start = 12.dp)) {
                             Icon(MiuixIcons.Close, contentDescription = stringResource(R.string.cache_management_deselect), tint = MiuixTheme.colorScheme.onBackground)
                         }
-                    } else {
+                    } else if (showBackButton) {
                         IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                             Icon(MiuixIcons.Back, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
                         }
@@ -217,15 +221,21 @@ fun MiuixCacheManagementScreen(
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp
-            )
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val useTwoPane = layoutInfo.useTwoPanePreview && maxWidth >= 600.dp
+            val singlePaneHorizontalExtra = if (
+                !useTwoPane &&
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            val dividerColor = MiuixTheme.colorScheme.dividerLine
+            val leftItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             item { SmallTitle(text = stringResource(R.string.cache_management_lyric_cache)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -297,6 +307,8 @@ fun MiuixCacheManagementScreen(
                     }
                 }
             }
+            }
+            val rightItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             item { SmallTitle(text = stringResource(R.string.cache_management_entries_title)) }
             item {
                 SearchBar(
@@ -435,6 +447,55 @@ fun MiuixCacheManagementScreen(
                     ),
                     modifier = Modifier.padding(top = 12.dp)
                 )
+            }
+            }
+            if (useTwoPane) {
+                AdaptiveTwoPane(
+                    startWeight = 0.40f,
+                    dividerColor = dividerColor,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .miuixPageScroll(scrollBehavior),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraBottom = 24.dp,
+                                extraEnd = 4.dp,
+                            ),
+                            content = leftItems,
+                        )
+                    },
+                    endPane = {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .miuixPageScroll(scrollBehavior),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 4.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            content = rightItems,
+                        )
+                    },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .miuixPageScroll(scrollBehavior),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    ),
+                ) {
+                    leftItems()
+                    rightItems()
+                }
             }
         }
 

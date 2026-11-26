@@ -84,6 +84,9 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
 import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import top.yukonga.miuix.kmp.basic.Button
@@ -105,7 +108,8 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 @Composable
 fun MiuixOnlineLyricDebugScreen(
     onBack: () -> Unit,
-    viewModel: OnlineLyricDebugViewModel = viewModel()
+    viewModel: OnlineLyricDebugViewModel = viewModel(),
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -178,24 +182,31 @@ fun MiuixOnlineLyricDebugScreen(
                 title = stringResource(R.string.online_lyric_rematch_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val useTwoPane = layoutInfo.useTwoPanePreview && maxWidth >= 600.dp
+            val singlePaneHorizontalExtra = if (
+                !useTwoPane &&
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            val dividerColor = MiuixTheme.colorScheme.dividerLine
+            val leftItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_current_playback)) }
             item {
                 Card(
@@ -346,6 +357,8 @@ fun MiuixOnlineLyricDebugScreen(
             item {
                 TrackIdInputCard(viewModel, isFetching, offlineModeEnabled, isInstrumental || isAlbumInstrumental)
             }
+            }
+            val rightItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
 
             if (selectedResult != null && rematchedLyrics.isNotBlank()) {
                 item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_result_title)) }
@@ -452,6 +465,58 @@ fun MiuixOnlineLyricDebugScreen(
                     ),
                     modifier = Modifier.padding(top = 12.dp)
                 )
+            }
+            }
+            if (useTwoPane) {
+                AdaptiveTwoPane(
+                    startWeight = 0.42f,
+                    dividerColor = dividerColor,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .miuixPageScroll(scrollBehavior),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraBottom = 24.dp,
+                                extraEnd = 4.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            content = leftItems,
+                        )
+                    },
+                    endPane = {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .miuixPageScroll(scrollBehavior),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 4.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            content = rightItems,
+                        )
+                    },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .miuixPageScroll(scrollBehavior),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    leftItems()
+                    rightItems()
+                }
             }
         }
 

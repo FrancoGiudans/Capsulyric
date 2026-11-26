@@ -67,6 +67,8 @@ import com.example.islandlyrics.integration.lastfm.LastFmApiClient
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
@@ -75,7 +77,10 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LastFmSettingsScreen(onBack: () -> Unit) {
+fun LastFmSettingsScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     val store = remember { LastFmSecureStore(context) }
@@ -176,24 +181,37 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.lastfm_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             item { SettingsSectionHeader(text = stringResource(R.string.lastfm_setup_title), marginTop = 0.dp) }
             item {
                 SettingsCard {
@@ -370,6 +388,7 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 }

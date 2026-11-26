@@ -62,6 +62,10 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,9 +74,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Palette
@@ -85,6 +93,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +102,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -100,6 +110,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.islandlyrics.ui.adaptive.AdaptiveReadableBox
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.WindowSizeTier
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -158,7 +172,7 @@ fun MiuixOobeScreen(
     val backupImportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_import_success_with_sensitive)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val sensitivePasswordInvalidText = stringResource(R.string.backup_sensitive_password_invalid)
-    var currentStep by remember { mutableIntStateOf(0) }
+    var currentStep by rememberSaveable { mutableIntStateOf(0) }
     var showRuleGuideDialog by remember { mutableStateOf(false) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     var pendingImportPreview by remember { mutableStateOf<PreviewResult?>(null) }
@@ -565,6 +579,9 @@ private fun LandingPage(
     onBack: (() -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
+    val layoutInfo = LocalAppWindowLayout.current
+    val isCompactLandscape = layoutInfo.tier == WindowSizeTier.CompactLandscape
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -590,62 +607,132 @@ private fun LandingPage(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
+                    .displayCutoutPadding()
                     .padding(start = 12.dp, top = 12.dp)
             ) {
                 MiuixBackIcon(contentDescription = null)
             }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, bottom = 84.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                bitmap = appIcon.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.size(104.dp)
-            )
-            Spacer(modifier = Modifier.height(28.dp))
-            Text(
-                text = title,
-                fontSize = 42.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MiuixTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = subtitle,
-                fontSize = 18.sp,
-                lineHeight = 26.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                textAlign = TextAlign.Center
-            )
-        }
+        if (isCompactLandscape) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .displayCutoutPadding()
+                    .padding(horizontal = 32.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        bitmap = appIcon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.size(76.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = title,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MiuixTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-        Button(
-            onClick = onAction,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            minHeight = 60.dp,
-            cornerRadius = 30.dp,
-            colors = if (primary) {
-                ButtonDefaults.buttonColorsPrimary()
-            } else {
-                ButtonDefaults.buttonColors()
+                Box(
+                    modifier = Modifier.weight(0.9f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = onAction,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 260.dp),
+                        minHeight = 52.dp,
+                        cornerRadius = 26.dp,
+                        colors = if (primary) {
+                            ButtonDefaults.buttonColorsPrimary()
+                        } else {
+                            ButtonDefaults.buttonColors()
+                        }
+                    ) {
+                        Text(
+                            text = actionText,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
-        ) {
-            Text(
-                text = actionText,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+        } else {
+            val heroMaxWidth = if (layoutInfo.tier == WindowSizeTier.CompactPortrait) 480.dp else 520.dp
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .widthIn(max = heroMaxWidth)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 84.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    bitmap = appIcon.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(104.dp)
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                Text(
+                    text = title,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MiuixTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 18.sp,
+                    lineHeight = 26.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Button(
+                onClick = onAction,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .widthIn(max = heroMaxWidth)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                minHeight = 60.dp,
+                cornerRadius = 30.dp,
+                colors = if (primary) {
+                    ButtonDefaults.buttonColorsPrimary()
+                } else {
+                    ButtonDefaults.buttonColors()
+                }
+            ) {
+                Text(
+                    text = actionText,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -662,6 +749,9 @@ private fun StandardStepPage(
     content: @Composable () -> Unit
 ) {
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val isCompactLandscape = layoutInfo.tier == WindowSizeTier.CompactLandscape
 
     MiuixBlurScaffold(
         topBar = {
@@ -693,18 +783,25 @@ private fun StandardStepPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxSize()
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxWidth()
                         .miuixPageScroll(scrollBehavior),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 12.dp,
-                        bottom = 12.dp
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraTop = 12.dp,
+                        extraBottom = 12.dp
                     )
                 ) {
-                    item { content() }
+                    item {
+                        AdaptiveReadableBox(maxWidth = 640.dp) {
+                            content()
+                        }
+                    }
                 }
 
                 if (!actionEnabled) {
@@ -715,6 +812,7 @@ private fun StandardStepPage(
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .widthIn(max = 640.dp)
                             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp)
                     )
                 }
@@ -724,19 +822,20 @@ private fun StandardStepPage(
                     enabled = actionEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .widthIn(max = 640.dp)
                         .padding(
-                            start = 16.dp,
-                            end = 16.dp,
+                            start = padding.calculateStartPadding(layoutDirection) + 16.dp,
+                            end = padding.calculateEndPadding(layoutDirection) + 16.dp,
                             top = if (!actionEnabled) 4.dp else 8.dp,
-                            bottom = padding.calculateBottomPadding() + 12.dp
+                            bottom = padding.calculateBottomPadding() + if (isCompactLandscape) 8.dp else 12.dp
                         ),
-                    minHeight = 60.dp,
-                    cornerRadius = 30.dp,
+                    minHeight = if (isCompactLandscape) 48.dp else 60.dp,
+                    cornerRadius = if (isCompactLandscape) 24.dp else 30.dp,
                     colors = ButtonDefaults.buttonColorsPrimary()
                 ) {
                     Text(
                         text = actionText,
-                        fontSize = 18.sp,
+                        fontSize = if (isCompactLandscape) 16.sp else 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }

@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
 import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
@@ -74,14 +76,19 @@ internal fun <T> MiuixNavPageStackHost(
     pageContent: @Composable BoxScope.(T) -> Unit,
 ) {
     val idGenerator = remember { AtomicLong() }
-    fun createRoute(entryId: Long, page: T): NavKey {
+    val hasStartRail = LocalAdaptiveHasStartRail.current
+    fun createRoute(entryId: Long, page: T, allowExpansion: Boolean = true): NavKey {
         val route = MiuixPageRoute(entryId, key(page), page)
-        return pageExpansion(page)?.let { MiuixExpandedPageRoute(route, it) } ?: route
+        return if (allowExpansion) {
+            pageExpansion(page)?.let { MiuixExpandedPageRoute(route, it) } ?: route
+        } else {
+            route
+        }
     }
     val backStack = remember {
         navBackStackOf(MiuixPageRoute(entryId = 0L, isRoot = true)).apply {
             stack.forEach { page ->
-                add(createRoute(idGenerator.incrementAndGet(), page))
+                add(createRoute(idGenerator.incrementAndGet(), page, allowExpansion = false))
             }
         }
     }
@@ -97,7 +104,8 @@ internal fun <T> MiuixNavPageStackHost(
             if (route.isRoot || route.pageKey != targetKeys[stackIndex]) break
             val page = stack[stackIndex]
             if (route.page !== page) {
-                backStack[matchingPrefixSize] = createRoute(route.entryId, page)
+                val preserveExpansion = backStack[matchingPrefixSize] is MiuixExpandedPageRoute
+                backStack[matchingPrefixSize] = createRoute(route.entryId, page, allowExpansion = preserveExpansion)
             }
             matchingPrefixSize++
         }
@@ -108,7 +116,7 @@ internal fun <T> MiuixNavPageStackHost(
         while (matchingPrefixSize - 1 < stack.size) {
             val stackIndex = matchingPrefixSize - 1
             val page = stack[stackIndex]
-            backStack.add(createRoute(idGenerator.incrementAndGet(), page))
+            backStack.add(createRoute(idGenerator.incrementAndGet(), page, allowExpansion = true))
             matchingPrefixSize++
         }
     }
@@ -122,7 +130,7 @@ internal fun <T> MiuixNavPageStackHost(
             .background(backdropColor),
         transition = NavTransitions.MiuixDefault,
         effects = NavDisplayEffects(
-            cornerClipRadius = rememberNavSystemCornerRadius(),
+            cornerClipRadius = if (hasStartRail) 0.dp else rememberNavSystemCornerRadius(),
             backdropColor = backdropColor,
         ),
     ) {

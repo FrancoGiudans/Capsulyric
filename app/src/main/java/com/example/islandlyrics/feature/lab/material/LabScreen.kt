@@ -36,6 +36,8 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -77,7 +79,8 @@ import kotlinx.coroutines.delay
 internal fun LabScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
-    onOpenCapsuleNotification: (() -> Unit)? = null
+    onOpenCapsuleNotification: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -159,24 +162,37 @@ internal fun LabScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.title_lab)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        androidx.compose.foundation.lazy.LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            )
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            androidx.compose.foundation.lazy.LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
             item {
                 Text(
                     text = stringResource(R.string.diag_lab_page_desc),
@@ -408,6 +424,7 @@ internal fun LabScreen(
                     )
                 }
             }
+        }
         }
     }
 

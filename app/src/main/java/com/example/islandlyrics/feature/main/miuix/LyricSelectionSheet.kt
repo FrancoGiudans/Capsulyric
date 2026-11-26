@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.WindowSizeTier
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
@@ -114,10 +116,16 @@ internal fun LyricSelectionSheet(
         }
     }
 
-    val viewport = LocalConfiguration.current.screenHeightDp.dp
+    val layoutInfo = LocalAppWindowLayout.current
+    val isCompactLandscape = layoutInfo.tier == WindowSizeTier.CompactLandscape
+    val viewport = if (layoutInfo.heightDp > 0.dp) {
+        layoutInfo.heightDp
+    } else {
+        LocalConfiguration.current.screenHeightDp.dp
+    }
     MiuixBlurBottomSheet(
         show = show,
-        sheetMaxWidth = 520.dp,
+        sheetMaxWidth = if (isCompactLandscape) 640.dp else 520.dp,
         insideMargin = DpSize(16.dp, 8.dp),
         allowDismiss = !exporting,
         onDismissRequest = onDismiss,
@@ -125,7 +133,7 @@ internal fun LyricSelectionSheet(
         renderInRootScaffold = false,
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(max = viewport * 0.78f).navigationBarsPadding().padding(bottom = 4.dp),
+            Modifier.fillMaxWidth().heightIn(max = viewport * if (isCompactLandscape) 0.88f else 0.78f).navigationBarsPadding().padding(bottom = 4.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LyricSelectionHeader(title, artist, cover, selection)
@@ -152,6 +160,7 @@ internal fun LyricSelectionSheet(
                 canExport = selection.canExport,
                 canCopy = selection.indices.isNotEmpty(),
                 loopRange = loopRange,
+                compactLandscape = isCompactLandscape,
                 onShare = { export(saveToGallery = false) },
                 onSave = { export(saveToGallery = true) },
                 onCopy = {
@@ -269,28 +278,49 @@ private fun LyricSelectionActions(
     canExport: Boolean,
     canCopy: Boolean,
     loopRange: LyricLoopRange?,
+    compactLandscape: Boolean = false,
     onShare: () -> Unit,
     onSave: () -> Unit,
     onCopy: () -> Unit,
     onLoop: (LyricLoopRange) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(
-            text = stringResource(if (exporting) R.string.lyrics_share_rendering else R.string.lyrics_share_image),
-            onClick = onShare,
-            enabled = !exporting && canExport,
-            colors = ButtonDefaults.textButtonColorsPrimary(),
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(stringResource(R.string.lyrics_share_save), onSave, Modifier.weight(1f), enabled = !exporting && canExport)
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(stringResource(R.string.lyrics_share_copy), onCopy, Modifier.weight(1f), enabled = !exporting && canCopy)
-        TextButton(
-            text = stringResource(R.string.lyrics_share_loop),
-            onClick = { loopRange?.let(onLoop) },
-            enabled = !exporting && loopRange != null,
-            modifier = Modifier.weight(1f),
-        )
+    if (compactLandscape) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(
+                text = stringResource(if (exporting) R.string.lyrics_share_rendering else R.string.lyrics_share_image),
+                onClick = onShare,
+                enabled = !exporting && canExport,
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(stringResource(R.string.lyrics_share_save), onSave, Modifier.weight(1f), enabled = !exporting && canExport)
+            TextButton(stringResource(R.string.lyrics_share_copy), onCopy, Modifier.weight(1f), enabled = !exporting && canCopy)
+            TextButton(
+                text = stringResource(R.string.lyrics_share_loop),
+                onClick = { loopRange?.let(onLoop) },
+                enabled = !exporting && loopRange != null,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(
+                text = stringResource(if (exporting) R.string.lyrics_share_rendering else R.string.lyrics_share_image),
+                onClick = onShare,
+                enabled = !exporting && canExport,
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(stringResource(R.string.lyrics_share_save), onSave, Modifier.weight(1f), enabled = !exporting && canExport)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(stringResource(R.string.lyrics_share_copy), onCopy, Modifier.weight(1f), enabled = !exporting && canCopy)
+            TextButton(
+                text = stringResource(R.string.lyrics_share_loop),
+                onClick = { loopRange?.let(onLoop) },
+                enabled = !exporting && loopRange != null,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }

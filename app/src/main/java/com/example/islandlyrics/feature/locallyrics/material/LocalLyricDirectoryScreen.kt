@@ -24,6 +24,8 @@ package com.example.islandlyrics.feature.locallyrics.material
 
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.net.Uri
@@ -59,7 +61,8 @@ import kotlinx.coroutines.withContext
 fun LocalLyricDirectoryScreen(
     directoryUri: Uri,
     directoryName: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -86,8 +89,10 @@ fun LocalLyricDirectoryScreen(
             MaterialBlurTopAppBar(
                 title = { Text(directoryName) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {
@@ -124,15 +129,26 @@ fun LocalLyricDirectoryScreen(
             onRefresh = { isRefreshing = true },
             modifier = Modifier.fillMaxSize()
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                    top = padding.calculateTopPadding(),
-                    end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                    bottom = padding.calculateBottomPadding() + 16.dp
-                )
-            ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val layoutInfo = LocalAppWindowLayout.current
+                val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+                val singlePaneHorizontalExtra = if (
+                    layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                    maxWidth > layoutInfo.maxReadableWidth
+                ) {
+                    (maxWidth - layoutInfo.maxReadableWidth) / 2
+                } else {
+                    0.dp
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 16.dp,
+                    )
+                ) {
             if (loading) {
                 item { Text("Loading...", modifier = Modifier.padding(16.dp)) }
             } else if (files.isEmpty()) {
@@ -191,6 +207,7 @@ fun LocalLyricDirectoryScreen(
                 }
             }
         }
+            }
         }
 
         if (editTarget != null) {

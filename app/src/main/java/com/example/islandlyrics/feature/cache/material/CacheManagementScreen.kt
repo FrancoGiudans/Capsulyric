@@ -96,6 +96,9 @@ import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -105,7 +108,8 @@ import java.util.Locale
 @Composable
 fun CacheManagementScreen(
     onBack: () -> Unit,
-    viewModel: CacheManagementViewModel = viewModel()
+    viewModel: CacheManagementViewModel = viewModel(),
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -173,7 +177,7 @@ fun CacheManagementScreen(
                         IconButton(onClick = { viewModel.exitSelectionMode() }) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cache_management_deselect))
                         }
-                    } else {
+                    } else if (showBackButton) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back))
                         }
@@ -204,16 +208,21 @@ fun CacheManagementScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 24.dp,
-                top = padding.calculateTopPadding() + 24.dp,
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 24.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val useTwoPane = layoutInfo.useTwoPanePreview && maxWidth >= 600.dp
+            val singlePaneHorizontalExtra = if (
+                !useTwoPane &&
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            val dividerColor = MaterialTheme.colorScheme.outlineVariant
+            val leftItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             item {
                 CacheSectionCard(title = stringResource(R.string.cache_management_lyric_cache)) {
                     CacheStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
@@ -295,6 +304,8 @@ fun CacheManagementScreen(
                     }
                 }
             }
+            }
+            val rightItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
 
             item {
                 Column {
@@ -400,6 +411,57 @@ fun CacheManagementScreen(
                             }
                         }
                     }
+                }
+            }
+            }
+            if (useTwoPane) {
+                AdaptiveTwoPane(
+                    startWeight = 0.40f,
+                    dividerColor = dividerColor,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 24.dp,
+                                extraTop = 24.dp,
+                                extraEnd = 12.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            content = leftItems,
+                        )
+                    },
+                    endPane = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 12.dp,
+                                extraTop = 24.dp,
+                                extraEnd = 24.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            content = rightItems,
+                        )
+                    },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = 24.dp + singlePaneHorizontalExtra,
+                        extraTop = 24.dp,
+                        extraEnd = 24.dp + singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    leftItems()
+                    rightItems()
                 }
             }
         }

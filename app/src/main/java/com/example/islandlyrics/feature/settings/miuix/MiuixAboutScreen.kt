@@ -99,6 +99,9 @@ import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.effects.MiuixAuroraBackground
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -141,7 +144,8 @@ fun MiuixAboutScreen(
     onReleaseDialogDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {},
     releaseLookupMessage: String? = null,
-    onReleaseLookupMessageDismiss: () -> Unit = {}
+    onReleaseLookupMessageDismiss: () -> Unit = {},
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -188,11 +192,13 @@ fun MiuixAboutScreen(
                     titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = scrollProgress),
                     defaultWindowInsetsPadding = true,
                     navigationIcon = {
-                        IconButton(
-                            onClick = { onBack?.invoke() ?: (context as? android.app.Activity)?.finish() },
-                            modifier = Modifier.padding(start = 12.dp)
-                        ) {
-                            MiuixBackIcon(contentDescription = "Back")
+                        if (showBackButton) {
+                            IconButton(
+                                onClick = { onBack?.invoke() ?: (context as? android.app.Activity)?.finish() },
+                                modifier = Modifier.padding(start = 12.dp)
+                            ) {
+                                MiuixBackIcon(contentDescription = "Back")
+                            }
                         }
                     }
                 )
@@ -328,60 +334,31 @@ private fun MiuixAboutContent(
             }
     }
 
-    MiuixAuroraBackground(
-        dynamicBackground = true,
-        effectBackground = true,
-        isDark = isDark,
-        modifier = Modifier.fillMaxSize(),
-        backgroundModifier = Modifier.layerBackdrop(backdrop),
-        alpha = { 1f - scrollProgress },
-    ) {
-        HeaderContent(
-            backdrop = backdrop,
-            blurEnabled = blurEnabled,
-            logoBlendColors = logoBlendColors,
-            versionInfoText = versionInfoText,
-            onVersionClick = ::copyVersionInfo,
-            onHeightChanged = { headerHeightDp = it },
-            onIconBottomChanged = { if (iconBottomY == 0f) iconBottomY = it },
-            onTitleBottomChanged = { if (titleBottomY == 0f) titleBottomY = it },
-            onVersionBottomChanged = { if (versionBottomY == 0f) versionBottomY = it },
-            iconProgress = iconProgress,
-            titleProgress = titleProgress,
-            versionProgress = versionProgress,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    top = listPadding.calculateTopPadding() + 52.dp,
-                    start = 24.dp,
-                    end = 24.dp
-                )
-        )
-
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .scrollEndHaptic()
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = listPadding,
-            overscrollEffect = null
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val layoutInfo = LocalAppWindowLayout.current
+        val useTwoPane = layoutInfo.isLandscape && maxWidth >= 600.dp
+        val singlePaneHorizontalExtra = if (
+            !useTwoPane &&
+            layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+            maxWidth > layoutInfo.maxReadableWidth
         ) {
-            item(key = "header_spacer") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(headerHeightDp + 52.dp + 126.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures { handleDevModeTap() }
-                        }
-                        .onSizeChanged { onHeaderHeightChanged(it.height) }
-                        .onGloballyPositioned { coordinates ->
-                            headerAreaBottomY = coordinates.positionInWindow().y + coordinates.size.height
-                        }
-                )
-            }
+            (maxWidth - layoutInfo.maxReadableWidth) / 2
+        } else {
+            0.dp
+        }
+        val singlePaneListPadding = PaddingValues(
+            start = padding.calculateStartPadding(layoutDirection) + singlePaneHorizontalExtra,
+            top = padding.calculateTopPadding(),
+            end = padding.calculateEndPadding(layoutDirection) + singlePaneHorizontalExtra,
+            bottom = padding.calculateBottomPadding() + navigationBarBottomPadding + 24.dp
+        )
+        val twoPaneListPadding = PaddingValues(
+            start = 4.dp,
+            top = padding.calculateTopPadding() + 12.dp,
+            end = padding.calculateEndPadding(layoutDirection),
+            bottom = padding.calculateBottomPadding() + navigationBarBottomPadding + 24.dp
+        )
+        val aboutCards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
 
             item(key = "about") {
                 SmallTitle(text = stringResource(R.string.about_title))
@@ -459,6 +436,125 @@ private fun MiuixAboutContent(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 )
+            }
+        }
+
+        if (useTwoPane) {
+            MiuixAuroraBackground(
+                dynamicBackground = true,
+                effectBackground = true,
+                isDark = isDark,
+                modifier = Modifier.fillMaxSize(),
+                backgroundModifier = Modifier.layerBackdrop(backdrop),
+                alpha = { 1f },
+            ) {
+                AdaptiveTwoPane(
+                    startWeight = 0.42f,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    start = padding.calculateStartPadding(layoutDirection) + 24.dp,
+                                    top = padding.calculateTopPadding(),
+                                    end = 12.dp,
+                                    bottom = padding.calculateBottomPadding() + navigationBarBottomPadding,
+                                )
+                                .pointerInput(Unit) {
+                                    detectTapGestures { handleDevModeTap() }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            HeaderContent(
+                                backdrop = backdrop,
+                                blurEnabled = blurEnabled,
+                                logoBlendColors = logoBlendColors,
+                                versionInfoText = versionInfoText,
+                                onVersionClick = ::copyVersionInfo,
+                                onHeightChanged = { headerHeightDp = it },
+                                onIconBottomChanged = { if (iconBottomY == 0f) iconBottomY = it },
+                                onTitleBottomChanged = { if (titleBottomY == 0f) titleBottomY = it },
+                                onVersionBottomChanged = { if (versionBottomY == 0f) versionBottomY = it },
+                                iconProgress = 0f,
+                                titleProgress = 0f,
+                                versionProgress = 0f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    endPane = {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .scrollEndHaptic()
+                                .overScrollVertical()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            contentPadding = twoPaneListPadding,
+                            overscrollEffect = null,
+                            content = aboutCards
+                        )
+                    },
+                )
+            }
+        } else {
+            MiuixAuroraBackground(
+                dynamicBackground = true,
+                effectBackground = true,
+                isDark = isDark,
+                modifier = Modifier.fillMaxSize(),
+                backgroundModifier = Modifier.layerBackdrop(backdrop),
+                alpha = { 1f - scrollProgress },
+            ) {
+                HeaderContent(
+                    backdrop = backdrop,
+                    blurEnabled = blurEnabled,
+                    logoBlendColors = logoBlendColors,
+                    versionInfoText = versionInfoText,
+                    onVersionClick = ::copyVersionInfo,
+                    onHeightChanged = { headerHeightDp = it },
+                    onIconBottomChanged = { if (iconBottomY == 0f) iconBottomY = it },
+                    onTitleBottomChanged = { if (titleBottomY == 0f) titleBottomY = it },
+                    onVersionBottomChanged = { if (versionBottomY == 0f) versionBottomY = it },
+                    iconProgress = iconProgress,
+                    titleProgress = titleProgress,
+                    versionProgress = versionProgress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = singlePaneListPadding.calculateTopPadding() + 52.dp,
+                            start = 24.dp + singlePaneHorizontalExtra,
+                            end = 24.dp + singlePaneHorizontalExtra
+                        )
+                )
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .scrollEndHaptic()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = singlePaneListPadding,
+                    overscrollEffect = null
+                ) {
+                    item(key = "header_spacer") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerHeightDp + 52.dp + 126.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures { handleDevModeTap() }
+                                }
+                                .onSizeChanged { onHeaderHeightChanged(it.height) }
+                                .onGloballyPositioned { coordinates ->
+                                    headerAreaBottomY = coordinates.positionInWindow().y + coordinates.size.height
+                                }
+                        )
+                    }
+                    aboutCards()
+                }
             }
         }
     }

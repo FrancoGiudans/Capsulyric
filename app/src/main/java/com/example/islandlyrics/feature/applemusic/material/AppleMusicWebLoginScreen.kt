@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -36,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -119,26 +121,36 @@ fun AppleMusicWebLoginScreen(onBack: () -> Unit, onDone: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
+        val layoutInfo = LocalAppWindowLayout.current
+        val verticalPad = if (layoutInfo.isShortHeight) 8.dp else 16.dp
+        val itemGap = if (layoutInfo.isShortHeight) 8.dp else 12.dp
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding),
+            contentAlignment = androidx.compose.ui.Alignment.TopCenter
         ) {
-            Text(
-                text = stringResource(statusRes),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            AndroidView(
-                factory = { webView },
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            )
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.apple_music_web_login_done))
+                    .fillMaxSize()
+                    .widthIn(max = 960.dp)
+                    .padding(horizontal = 16.dp, vertical = verticalPad),
+                verticalArrangement = Arrangement.spacedBy(itemGap)
+            ) {
+                Text(
+                    text = stringResource(statusRes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                AndroidView(
+                    factory = { webView },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
+                Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.apple_music_web_login_done))
+                }
             }
         }
     }

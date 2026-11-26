@@ -61,8 +61,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Refresh
@@ -85,8 +87,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.WindowSizeTier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.text.AnnotatedString
@@ -241,15 +246,19 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
         val dialogShape = RoundedCornerShape(24.dp)
         val view = LocalView.current
         val density = LocalDensity.current
+        val layoutInfo = LocalAppWindowLayout.current
+        val isCompactLandscape = layoutInfo.tier == WindowSizeTier.CompactLandscape
+        val maxDialogWidthDp = if (isCompactLandscape) 580.dp else 440.dp
 
         SideEffect {
             val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
                 val cornerRadiusPx = with(density) { 24.dp.toPx() }
                 val screenWidthPx = view.resources.displayMetrics.widthPixels
-                val maxWidthPx = with(density) { 420.dp.roundToPx() }
+                val maxWidthPx = with(density) { maxDialogWidthDp.roundToPx() }
                 val horizontalMarginPx = with(density) { 16.dp.roundToPx() }
                 val targetWidthPx = minOf(screenWidthPx - horizontalMarginPx * 2, maxWidthPx).coerceAtLeast(0)
+                window.setGravity(android.view.Gravity.CENTER)
                 window.attributes = window.attributes.apply {
                     width = targetWidthPx
                     height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
@@ -288,13 +297,16 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                 tonalElevation = 0.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 420.dp)
-                    .padding(vertical = 24.dp)
+                    .widthIn(max = maxDialogWidthDp)
+                    .heightIn(max = (layoutInfo.heightDp - 32.dp).coerceAtLeast(240.dp))
+                    .padding(vertical = if (isCompactLandscape) 8.dp else 24.dp)
                     .wrapContentHeight()
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .padding(if (isCompactLandscape) 12.dp else 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactLandscape) 8.dp else 12.dp)
                 ) {
                     // Title Row
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -390,6 +402,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                 primaryLyricSource = if (isPrimary) primaryLyricSource else null,
                                 primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
                                 showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
+                                compactLandscape = isCompactLandscape,
                                 onOpenOnlineLyricRematch = {
                                     context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
                                     triggerDismiss()
@@ -458,6 +471,7 @@ private fun MediaSessionCard(
     primaryLyricSource: String?,
     primaryIsInstrumental: Boolean,
     showOnlineLyricRematch: Boolean,
+    compactLandscape: Boolean = false,
     onOpenOnlineLyricRematch: () -> Unit
 ) {
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -556,183 +570,170 @@ private fun MediaSessionCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(modifier = Modifier.fillMaxWidth().background(cardBackgroundColor)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                val openApp = { openMediaApp(context, controller, appName) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable(onClick = openApp)
-                    ) {
-                        if (albumArtBitmap != null) {
-                            Image(
-                                bitmap = albumArtBitmap.asImageBitmap(),
-                                contentDescription = stringResource(R.string.main_album_art_cd),
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize()
-                            )
-                        } else {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceDim,
-                                modifier = Modifier.matchParentSize()
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_music_note),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(24.dp)
-                                )
-                            }
-                        }
+            val openApp = { openMediaApp(context, controller, appName) }
+            val primaryStatus = when {
+                isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
+                isPrimary && !primaryLyricSource.isNullOrBlank() ->
+                    stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
+                else -> null
+            }
+            val lyricEmptyText = if (isPrimary) {
+                when {
+                    primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
+                    primaryHasTimeline -> stringResource(
+                        R.string.main_lyrics_sync_placeholder_fmt,
+                        formatPlaybackTime(position),
+                        formatPlaybackTime(duration)
+                    )
+                    primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
+                        stringResource(R.string.main_lyrics_not_found)
+                    else -> stringResource(R.string.main_waiting_for_lyrics)
+                }
+            } else {
+                stringResource(R.string.main_lyrics_unavailable)
+            }
+            var isDragging by remember { mutableStateOf(false) }
+            var dragProgress by remember { mutableFloatStateOf(0f) }
+            LaunchedEffect(position, pendingSeekPosition, pendingSeekStartedAt, seekOriginPosition, isPlaying) {
+                if (pendingSeekPosition < 0L) return@LaunchedEffect
+                val expectedPendingPosition = if (isPlaying && pendingSeekStartedAt > 0L) {
+                    (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                } else {
+                    pendingSeekPosition
+                }
+                val hasActuallyMovedFromOrigin = seekOriginPosition < 0L || abs(position - seekOriginPosition) > 250L
+                val isNearSeekTarget = abs(position - expectedPendingPosition) <= 250L
 
-                        if (appIcon != null) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 2.dp,
-                                shadowElevation = 2.dp,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(4.dp)
-                                    .size(24.dp)
-                            ) {
-                                Image(
-                                    bitmap = appIcon.asImageBitmap(),
-                                    contentDescription = appName,
-                                    modifier = Modifier.padding(4.dp),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
+                if (hasActuallyMovedFromOrigin && isNearSeekTarget) {
+                    pendingSeekPosition = -1L
+                    pendingSeekStartedAt = 0L
+                    seekOriginPosition = -1L
+                    return@LaunchedEffect
+                }
+                if (pendingSeekStartedAt <= 0L) return@LaunchedEffect
+                val remaining = 4000L - (SystemClock.elapsedRealtime() - pendingSeekStartedAt)
+                if (remaining > 0L) delay(remaining)
+                if (pendingSeekPosition >= 0L && !isPlaying) {
+                    pendingSeekPosition = -1L
+                    pendingSeekStartedAt = 0L
+                    seekOriginPosition = -1L
+                }
+            }
+            val effectivePosition = if (pendingSeekPosition >= 0L) {
+                if (isPlaying && pendingSeekStartedAt > 0L) {
+                    (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                } else {
+                    pendingSeekPosition
+                }
+            } else {
+                position
+            }
+            val currentProgress = if (isDragging) {
+                dragProgress
+            } else {
+                if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+            }
+
+            @Composable
+            fun AlbumArtBox(artSize: Dp) {
+                Box(
+                    modifier = Modifier
+                        .size(artSize)
+                        .clip(RoundedCornerShape(if (compactLandscape) 12.dp else 16.dp))
+                        .clickable(onClick = openApp)
+                ) {
+                    if (albumArtBitmap != null) {
+                        Image(
+                            bitmap = albumArtBitmap.asImageBitmap(),
+                            contentDescription = stringResource(R.string.main_album_art_cd),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(if (compactLandscape) 12.dp else 16.dp),
+                            color = MaterialTheme.colorScheme.surfaceDim,
+                            modifier = Modifier.matchParentSize()
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_music_note),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(if (compactLandscape) 16.dp else 24.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
+                    if (appIcon != null) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(4.dp)
+                                .size(if (compactLandscape) 20.dp else 24.dp)
                         ) {
-                            Text(
-                                text = appName,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = artist,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val primaryStatus = when {
-                            isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
-                            isPrimary && !primaryLyricSource.isNullOrBlank() ->
-                                stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
-                            else -> null
-                        }
-                        if (primaryStatus != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = primaryStatus,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
+                            Image(
+                                bitmap = appIcon.asImageBitmap(),
+                                contentDescription = appName,
+                                modifier = Modifier.padding(4.dp),
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(18.dp))
-                MaterialLyricPanel(
-                    preview = primaryLyric,
-                    fallbackLyric = parsedLyricFromTitle,
-                    wordLine = primaryWordLine,
-                    playbackState = playbackState,
-                    fallbackPositionMs = primaryProgress?.position,
-                    emptyText = if (isPrimary) {
-                        when {
-                            primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
-                            primaryHasTimeline -> stringResource(
-                                R.string.main_lyrics_sync_placeholder_fmt,
-                                formatPlaybackTime(position),
-                                formatPlaybackTime(duration)
-                            )
-                            primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
-                                stringResource(R.string.main_lyrics_not_found)
-                            else -> stringResource(R.string.main_waiting_for_lyrics)
-                        }
-                    } else {
-                        stringResource(R.string.main_lyrics_unavailable)
-                    }
-                )
-                if (showOnlineLyricRematch) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onOpenOnlineLyricRematch,
-                        modifier = Modifier.fillMaxWidth()
+            @Composable
+            fun TrackInfoColumn(modifier: Modifier = Modifier) {
+                Column(modifier = modifier) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.online_lyric_rematch_entry_short))
+                        Text(
+                            text = appName,
+                            modifier = Modifier.padding(
+                                horizontal = if (compactLandscape) 8.dp else 10.dp,
+                                vertical = if (compactLandscape) 3.dp else 6.dp
+                            ),
+                            style = if (compactLandscape) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(if (compactLandscape) 6.dp else 10.dp))
+                    Text(
+                        text = title,
+                        style = if (compactLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(if (compactLandscape) 2.dp else 4.dp))
+                    Text(
+                        text = artist,
+                        style = if (compactLandscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (primaryStatus != null) {
+                        Spacer(modifier = Modifier.height(if (compactLandscape) 4.dp else 8.dp))
+                        Text(
+                            text = primaryStatus,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(18.dp))
-                var isDragging by remember { mutableStateOf(false) }
-                var dragProgress by remember { mutableFloatStateOf(0f) }
-                LaunchedEffect(position, pendingSeekPosition, pendingSeekStartedAt, seekOriginPosition, isPlaying) {
-                    if (pendingSeekPosition < 0L) return@LaunchedEffect
-                    val expectedPendingPosition = if (isPlaying && pendingSeekStartedAt > 0L) {
-                        (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
-                    } else {
-                        pendingSeekPosition
-                    }
-                    val hasActuallyMovedFromOrigin = seekOriginPosition < 0L || abs(position - seekOriginPosition) > 250L
-                    val isNearSeekTarget = abs(position - expectedPendingPosition) <= 250L
-
-                    if (hasActuallyMovedFromOrigin && isNearSeekTarget) {
-                        pendingSeekPosition = -1L
-                        pendingSeekStartedAt = 0L
-                        seekOriginPosition = -1L
-                        return@LaunchedEffect
-                    }
-                    if (pendingSeekStartedAt <= 0L) return@LaunchedEffect
-                    val remaining = 4000L - (SystemClock.elapsedRealtime() - pendingSeekStartedAt)
-                    if (remaining > 0L) delay(remaining)
-                    if (pendingSeekPosition >= 0L && !isPlaying) {
-                        pendingSeekPosition = -1L
-                        pendingSeekStartedAt = 0L
-                        seekOriginPosition = -1L
-                    }
-                }
-                val effectivePosition = if (pendingSeekPosition >= 0L) {
-                    if (isPlaying && pendingSeekStartedAt > 0L) {
-                        (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
-                    } else {
-                        pendingSeekPosition
-                    }
-                } else {
-                    position
-                }
-                val currentProgress = if (isDragging) {
-                    dragProgress
-                } else {
-                    if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-                }
-
+            @Composable
+            fun ProgressBar() {
                 MaterialMediaProgressBar(
                     value = currentProgress,
                     enabled = duration > 0,
@@ -753,8 +754,10 @@ private fun MediaSessionCard(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
 
-                Spacer(modifier = Modifier.height(14.dp))
+            @Composable
+            fun TransportRow() {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -772,7 +775,7 @@ private fun MediaSessionCard(
                             }
                         },
                         shape = CircleShape,
-                        contentPadding = PaddingValues(18.dp)
+                        contentPadding = PaddingValues(if (compactLandscape) 14.dp else 18.dp)
                     ) {
                         Icon(
                             painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
@@ -781,12 +784,88 @@ private fun MediaSessionCard(
                             } else {
                                 stringResource(R.string.action_play)
                             },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(if (compactLandscape) 20.dp else 24.dp)
                         )
                     }
                     MaterialRoundTransportButton(R.drawable.ic_skip_next, stringResource(R.string.action_next)) {
                         controller.transportControls.skipToNext()
                     }
+                }
+            }
+
+            if (compactLandscape) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(0.48f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AlbumArtBox(artSize = 60.dp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            TrackInfoColumn(modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        ProgressBar()
+                    }
+                    Column(modifier = Modifier.weight(0.52f)) {
+                        MaterialLyricPanel(
+                            preview = primaryLyric,
+                            fallbackLyric = parsedLyricFromTitle,
+                            wordLine = primaryWordLine,
+                            playbackState = playbackState,
+                            fallbackPositionMs = primaryProgress?.position,
+                            emptyText = lyricEmptyText,
+                            compactLandscape = true
+                        )
+                        if (showOnlineLyricRematch) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = onOpenOnlineLyricRematch,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.online_lyric_rematch_entry_short))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TransportRow()
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AlbumArtBox(artSize = 80.dp)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        TrackInfoColumn(modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+                    MaterialLyricPanel(
+                        preview = primaryLyric,
+                        fallbackLyric = parsedLyricFromTitle,
+                        wordLine = primaryWordLine,
+                        playbackState = playbackState,
+                        fallbackPositionMs = primaryProgress?.position,
+                        emptyText = lyricEmptyText
+                    )
+                    if (showOnlineLyricRematch) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = onOpenOnlineLyricRematch,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.online_lyric_rematch_entry_short))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+                    ProgressBar()
+                    Spacer(modifier = Modifier.height(14.dp))
+                    TransportRow()
                 }
             }
         }
@@ -831,6 +910,7 @@ private fun MaterialLyricPanel(
     playbackState: PlaybackState?,
     fallbackPositionMs: Long?,
     emptyText: String,
+    compactLandscape: Boolean = false,
 ) {
     val context = LocalContext.current
     val lyric = preview?.text ?: fallbackLyric
@@ -841,7 +921,7 @@ private fun MaterialLyricPanel(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 118.dp)
+            .heightIn(min = if (compactLandscape) 72.dp else 118.dp)
             .clickable(enabled = !lyric.isNullOrBlank()) {
                 lyric?.let {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager

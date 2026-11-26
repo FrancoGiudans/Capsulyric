@@ -26,6 +26,7 @@ import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
@@ -50,20 +51,32 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.AdaptiveWidthItem
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import kotlinx.coroutines.delay
+
+private const val TEMPLATE_DETAIL_KEY = "__TEMPLATE__"
+private const val NEW_RULE_DETAIL_PREFIX = "__NEW__|"
 
 private data class InlineParserRuleEditorState(
     val initialRule: ParserRule,
     val isNewRule: Boolean,
     val isTemplate: Boolean = false,
 )
+
+private fun encodeNewRuleDetailKey(packageName: String?, suggestedName: String?): String =
+    "$NEW_RULE_DETAIL_PREFIX${packageName.orEmpty()}|${suggestedName.orEmpty()}"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,9 +87,14 @@ fun ParserRuleScreen(
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     onOpenFaq: (() -> Unit)? = null,
     onOpenRuleEditor: ((packageName: String?, suggestedName: String?) -> Unit)? = null,
-    onOpenTemplateEditor: (() -> Unit)? = null
+    onOpenTemplateEditor: (() -> Unit)? = null,
+    selectedDetailKey: String? = null,
+    onSelectDetailKey: ((String?) -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val useMasterDetail = layoutInfo.useMasterDetail && onSelectDetailKey != null
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     var rules by remember { mutableStateOf<List<ParserRule>>(ParserRuleHelper.loadRules(context)) }
     var hasTemplate by remember { mutableStateOf(ParserRuleHelper.hasDefaultTemplate(context)) }
@@ -116,6 +134,19 @@ fun ParserRuleScreen(
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        if (useMasterDetail && onSelectDetailKey != null) {
+            val existingRule = if (!packageName.isNullOrBlank()) {
+                rules.firstOrNull { it.packageName == packageName }
+            } else {
+                null
+            }
+            if (existingRule != null) {
+                onSelectDetailKey(existingRule.packageName)
+            } else {
+                onSelectDetailKey(encodeNewRuleDetailKey(packageName, suggestedName))
+            }
+            return
+        }
         if (onOpenRuleEditor != null) {
             onOpenRuleEditor(packageName, suggestedName)
             return
@@ -140,6 +171,10 @@ fun ParserRuleScreen(
     }
 
     fun openTemplateEditor() {
+        if (useMasterDetail && onSelectDetailKey != null) {
+            onSelectDetailKey(TEMPLATE_DETAIL_KEY)
+            return
+        }
         if (onOpenTemplateEditor != null) {
             onOpenTemplateEditor()
             return
@@ -168,117 +203,129 @@ fun ParserRuleScreen(
         }
     }
 
-    OverlaySheetHost(
-        visible = inlineEditorVisible && inlineEditorState != null,
-        onDismissRequest = ::closeRuleEditor,
-        content = {
-            MaterialBlurScaffold(
-                contentWindowInsets = WindowInsets(0),
-                topBar = {
-                    MaterialBlurTopAppBar(
-                        title = { Text(stringResource(R.string.parser_rule_title)) },
-                        navigationIcon = if (showBackButton) {
-                            {
-                                IconButton(onClick = onBack) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                            }
-                        } else {
-                            {}
-                        },
-                        actions = {
-                            IconButton(onClick = {
-                                onOpenFaq?.invoke()
-                                    ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                            }) {
+    val listScaffoldContent: @Composable () -> Unit = {
+        MaterialBlurScaffold(
+            contentWindowInsets = WindowInsets(0),
+            topBar = {
+                MaterialBlurTopAppBar(
+                    title = { Text(stringResource(R.string.parser_rule_title)) },
+                    navigationIcon = if (showBackButton) {
+                        {
+                            IconButton(onClick = onBack) {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = stringResource(R.string.faq_title)
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
                                 )
                             }
-                        },
-                    )
-                },
-                floatingActionButton = {
-                    // Recommendation Logic
-                    val recommendEnabled = remember {
-                        AppPreferences.of(context)
-                            .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
-                    }
+                        }
+                    } else {
+                        {}
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = stringResource(R.string.faq_title)
+                            )
+                        }
+                    },
+                )
+            },
+            floatingActionButton = {
+                // Recommendation Logic
+                val recommendEnabled = remember {
+                    AppPreferences.of(context)
+                        .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
+                }
 
-                    val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
-                    val currentPkg = metadata?.packageName
+                val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
+                val currentPkg = metadata?.packageName
 
-                    // Check if current app is already in rules
-                    val isKnownApp = remember(rules, currentPkg) {
-                        if (currentPkg == null) true // Don't recommend if no music
-                        else rules.any { it.packageName == currentPkg }
-                    }
+                // Check if current app is already in rules
+                val isKnownApp = remember(rules, currentPkg) {
+                    if (currentPkg == null) true // Don't recommend if no music
+                    else rules.any { it.packageName == currentPkg }
+                }
 
-                    val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
+                val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
 
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            if (showRecommendation) {
-                                // Try to get label
-                                val label = try {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        if (showRecommendation) {
+                            // Try to get label
+                            val label = try {
+                                val pm = context.packageManager
+                                val info = pm.getApplicationInfo(currentPkg, 0)
+                                pm.getApplicationLabel(info).toString()
+                            } catch (_: Exception) {
+                                ""
+                            }
+                            openRuleEditor(packageName = currentPkg, suggestedName = label)
+                        } else {
+                            openRuleEditor()
+                        }
+                    },
+                    expanded = showRecommendation,
+                    icon = { Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = null) },
+                    modifier = Modifier.padding(bottom = extraBottomPadding),
+                    text = {
+                        if (showRecommendation) {
+                            // Extract app name for display
+                            val appLabel = remember(currentPkg) {
+                                try {
                                     val pm = context.packageManager
                                     val info = pm.getApplicationInfo(currentPkg, 0)
                                     pm.getApplicationLabel(info).toString()
                                 } catch (_: Exception) {
-                                    ""
+                                    null
                                 }
-                                openRuleEditor(packageName = currentPkg, suggestedName = label)
-                            } else {
-                                openRuleEditor()
                             }
-                        },
-                        expanded = showRecommendation,
-                        icon = { Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = null) },
-                        modifier = Modifier.padding(bottom = extraBottomPadding),
-                        text = {
-                            if (showRecommendation) {
-                                // Extract app name for display
-                                val appLabel = remember(currentPkg) {
-                                    try {
-                                        val pm = context.packageManager
-                                        val info = pm.getApplicationInfo(currentPkg, 0)
-                                        pm.getApplicationLabel(info).toString()
-                                    } catch (_: Exception) {
-                                        null
-                                    }
-                                }
-                                Text(text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)))
-                            } else {
-                                Text(text = stringResource(R.string.parser_add_rule))
-                            }
+                            Text(text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)))
+                        } else {
+                            Text(text = stringResource(R.string.parser_add_rule))
                         }
+                    }
+                )
+            },
+            containerColor = materialPageContainerColor()
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = if (useMasterDetail) {
+                    PaddingValues(
+                        start = padding.calculateStartPadding(layoutDirection) + 16.dp,
+                        top = padding.calculateTopPadding() + 8.dp,
+                        end = 12.dp,
+                        bottom = padding.calculateBottomPadding() + 80.dp + extraBottomPadding,
+                    )
+                } else {
+                    padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = 16.dp,
+                        extraTop = 8.dp,
+                        extraEnd = 16.dp,
+                        extraBottom = 80.dp + extraBottomPadding,
                     )
                 },
-                containerColor = materialPageContainerColor()
-            ) { padding ->
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 16.dp,
-                        top = padding.calculateTopPadding() + 8.dp,
-                        end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 16.dp,
-                        bottom = padding.calculateBottomPadding() + 80.dp + extraBottomPadding,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    item {
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                item {
+                    val templateCard = @Composable {
                         ParserRuleTemplateCard(
                             configured = hasTemplate,
+                            selected = useMasterDetail && selectedDetailKey == TEMPLATE_DETAIL_KEY,
                             onClick = ::openTemplateEditor
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
-                    if (rules.isEmpty()) {
-                        item {
+                    if (useMasterDetail) templateCard() else AdaptiveWidthItem { templateCard() }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                if (rules.isEmpty()) {
+                    item {
+                        val emptyCard = @Composable {
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
@@ -292,8 +339,11 @@ fun ParserRuleScreen(
                                 )
                             }
                         }
-                    } else {
-                        item {
+                        if (useMasterDetail) emptyCard() else AdaptiveWidthItem { emptyCard() }
+                    }
+                } else {
+                    item {
+                        val rulesCard = @Composable {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = MaterialTheme.shapes.extraLarge,
@@ -304,6 +354,7 @@ fun ParserRuleScreen(
                                     ParserRuleItem(
                                         rule = rule,
                                         offlineModeEnabled = offlineModeEnabled,
+                                        selected = useMasterDetail && selectedDetailKey == rule.packageName,
                                         onToggleEnabled = { enabled ->
                                             val idx = rules.indexOf(rule)
                                             if (idx != -1) {
@@ -326,57 +377,187 @@ fun ParserRuleScreen(
                                 }
                             }
                         }
+                        if (useMasterDetail) rulesCard() else AdaptiveWidthItem { rulesCard() }
                     }
                 }
             }
-        },
-        sheetContent = {
-            val editorState = inlineEditorState
-            if (editorState != null) {
-                ParserRuleEditorScreen(
-                    initialRule = editorState.initialRule,
-                    isNewRule = editorState.isNewRule,
-                    isTemplate = editorState.isTemplate,
-                    onBack = ::closeRuleEditor,
-                    onDelete = { rule ->
-                        if (editorState.isTemplate) {
-                            ParserRuleHelper.clearDefaultTemplate(context)
-                            refreshRules()
-                        } else {
-                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                            updatedRules.removeAll { it.packageName == rule.packageName }
-                            ParserRuleHelper.saveRules(context, updatedRules)
-                            refreshRules()
-                        }
-                        closeRuleEditor()
-                    },
-                    onSaved = { rule ->
-                        if (editorState.isTemplate) {
-                            ParserRuleHelper.saveDefaultTemplate(context, rule)
-                            refreshRules()
-                        } else {
-                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                            val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
-                            if (index >= 0) {
-                                updatedRules[index] = rule
-                            } else {
-                                updatedRules.add(rule)
-                            }
-                            updatedRules.sort()
-                            ParserRuleHelper.saveRules(context, updatedRules)
-                            refreshRules()
-                        }
-                        closeRuleEditor()
-                    },
-                    onOpenFaq = {
-                        closeRuleEditor()
-                        onOpenFaq?.invoke()
-                            ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                    }
-                )
-            }
         }
-    )
+    }
+
+    if (useMasterDetail) {
+        AdaptiveTwoPane(
+            startWeight = 0.38f,
+            dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            modifier = Modifier.fillMaxSize(),
+            startPane = { listScaffoldContent() },
+            endPane = {
+                CompositionLocalProvider(LocalAdaptiveHasStartRail provides true) {
+                    val detailKey = selectedDetailKey
+                    val detailEditorState = remember(detailKey, rules, hasTemplate) {
+                        when {
+                            detailKey == null -> null
+                            detailKey == TEMPLATE_DETAIL_KEY -> InlineParserRuleEditorState(
+                                initialRule = ParserRuleHelper.loadDefaultTemplate(context)
+                                    ?: ParserRuleHelper.createDefaultRule(context, ""),
+                                isNewRule = false,
+                                isTemplate = true
+                            )
+                            detailKey.startsWith(NEW_RULE_DETAIL_PREFIX) -> {
+                                val parts = detailKey.removePrefix(NEW_RULE_DETAIL_PREFIX).split('|', limit = 2)
+                                val pkg = parts.getOrNull(0).orEmpty()
+                                val name = parts.getOrNull(1).orEmpty().ifBlank { null }
+                                val existing = if (pkg.isNotBlank()) rules.firstOrNull { it.packageName == pkg } else null
+                                val initial = if (pkg.isNotBlank()) {
+                                    existing ?: ParserRuleHelper.createDefaultRule(context, pkg).copy(customName = name)
+                                } else {
+                                    ParserRuleHelper.createDefaultRule(context, "").copy(customName = name)
+                                }
+                                InlineParserRuleEditorState(
+                                    initialRule = initial,
+                                    isNewRule = pkg.isBlank() || existing == null,
+                                    isTemplate = false
+                                )
+                            }
+                            else -> rules.firstOrNull { it.packageName == detailKey }?.let { rule ->
+                                InlineParserRuleEditorState(
+                                    initialRule = rule,
+                                    isNewRule = false,
+                                    isTemplate = false
+                                )
+                            }
+                        }
+                    }
+                    if (detailEditorState != null) {
+                        key(detailKey) {
+                            ParserRuleEditorScreen(
+                                initialRule = detailEditorState.initialRule,
+                                isNewRule = detailEditorState.isNewRule,
+                                isTemplate = detailEditorState.isTemplate,
+                                showBackButton = false,
+                                onBack = { onSelectDetailKey?.invoke(null) },
+                                onDelete = { rule ->
+                                    if (detailEditorState.isTemplate) {
+                                        ParserRuleHelper.clearDefaultTemplate(context)
+                                    } else {
+                                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                        updatedRules.removeAll { it.packageName == rule.packageName }
+                                        ParserRuleHelper.saveRules(context, updatedRules)
+                                    }
+                                    refreshRules()
+                                    onSelectDetailKey?.invoke(null)
+                                },
+                                onSaved = { rule ->
+                                    if (detailEditorState.isTemplate) {
+                                        ParserRuleHelper.saveDefaultTemplate(context, rule)
+                                        refreshRules()
+                                        onSelectDetailKey?.invoke(TEMPLATE_DETAIL_KEY)
+                                    } else {
+                                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                        val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                                        if (index >= 0) {
+                                            updatedRules[index] = rule
+                                        } else {
+                                            updatedRules.add(rule)
+                                        }
+                                        updatedRules.sort()
+                                        ParserRuleHelper.saveRules(context, updatedRules)
+                                        refreshRules()
+                                        onSelectDetailKey?.invoke(rule.packageName)
+                                    }
+                                },
+                                onOpenFaq = {
+                                    onOpenFaq?.invoke()
+                                        ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                }
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(
+                                shape = MaterialTheme.shapes.extraLarge,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                elevation = CardDefaults.cardElevation(0.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.parser_rule_title),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.parser_rule_subtitle),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    } else {
+        OverlaySheetHost(
+            visible = inlineEditorVisible && inlineEditorState != null,
+            onDismissRequest = ::closeRuleEditor,
+            content = { listScaffoldContent() },
+            sheetContent = {
+                val editorState = inlineEditorState
+                if (editorState != null) {
+                    ParserRuleEditorScreen(
+                        initialRule = editorState.initialRule,
+                        isNewRule = editorState.isNewRule,
+                        isTemplate = editorState.isTemplate,
+                        onBack = ::closeRuleEditor,
+                        onDelete = { rule ->
+                            if (editorState.isTemplate) {
+                                ParserRuleHelper.clearDefaultTemplate(context)
+                                refreshRules()
+                            } else {
+                                val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                updatedRules.removeAll { it.packageName == rule.packageName }
+                                ParserRuleHelper.saveRules(context, updatedRules)
+                                refreshRules()
+                            }
+                            closeRuleEditor()
+                        },
+                        onSaved = { rule ->
+                            if (editorState.isTemplate) {
+                                ParserRuleHelper.saveDefaultTemplate(context, rule)
+                                refreshRules()
+                            } else {
+                                val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                                if (index >= 0) {
+                                    updatedRules[index] = rule
+                                } else {
+                                    updatedRules.add(rule)
+                                }
+                                updatedRules.sort()
+                                ParserRuleHelper.saveRules(context, updatedRules)
+                                refreshRules()
+                            }
+                            closeRuleEditor()
+                        },
+                        onOpenFaq = {
+                            closeRuleEditor()
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        }
+                    )
+                }
+            }
+        )
+    }
 
     if (showDeleteDialog.value != null) {
         MaterialBlurAlertDialog(
@@ -388,10 +569,14 @@ fun ParserRuleScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    val deleted = showDeleteDialog.value
                     val newRules = rules.toMutableList()
-                    newRules.remove(showDeleteDialog.value)
+                    newRules.remove(deleted)
                     ParserRuleHelper.saveRules(context, newRules)
                     refreshRules()
+                    if (deleted != null && selectedDetailKey == deleted.packageName) {
+                        onSelectDetailKey?.invoke(null)
+                    }
                     showDeleteDialog.value = null
                 }) {
                     Text(stringResource(android.R.string.ok))
@@ -409,6 +594,7 @@ fun ParserRuleScreen(
 @Composable
 private fun ParserRuleTemplateCard(
     configured: Boolean,
+    selected: Boolean = false,
     onClick: () -> Unit
 ) {
     Card(
@@ -416,7 +602,13 @@ private fun ParserRuleTemplateCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         ListItem(
@@ -449,7 +641,8 @@ fun ParserRuleItem(
     offlineModeEnabled: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    selected: Boolean = false,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val onlineOrderSummary = if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
@@ -467,6 +660,13 @@ fun ParserRuleItem(
     ListItem(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f))
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(onClick = onEdit, onLongClick = onDelete),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = {

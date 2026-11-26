@@ -56,6 +56,8 @@ import com.example.islandlyrics.integration.lastfm.LastFmApiClient
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
 import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
@@ -75,7 +77,10 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
 @Composable
-fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
+fun MiuixLastFmSettingsScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     val store = remember { LastFmSecureStore(context) }
@@ -175,24 +180,40 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                 largeTitle = stringResource(R.string.lastfm_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 12.dp,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -367,6 +388,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                     modifier = Modifier.padding(top = 12.dp)
                 )
             }
+        }
         }
     }
 }

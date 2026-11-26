@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.feature.diagnostics.material
 
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
@@ -62,7 +64,8 @@ import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 @Composable
 fun DiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenLogViewer: (() -> Unit)? = null
+    onOpenLogViewer: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
@@ -72,23 +75,36 @@ fun DiagnosticsScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.title_diagnostics)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            )
-        ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
             if (BuildConfig.DEBUG) {
                 item { SettingsSectionHeader(text = stringResource(R.string.diag_header_debug_tools)) }
                 item {
@@ -226,6 +242,7 @@ fun DiagnosticsScreen(
                     )
                 }
             }
+        }
         }
     }
 }

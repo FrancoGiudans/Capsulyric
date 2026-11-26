@@ -44,7 +44,9 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -57,6 +59,9 @@ import androidx.compose.material.icons.filled.Sync
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,7 +114,8 @@ fun AboutScreen(
     onReleaseDialogDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {},
     releaseLookupMessage: String? = null,
-    onReleaseLookupMessageDismiss: () -> Unit = {}
+    onReleaseLookupMessageDismiss: () -> Unit = {},
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
 
@@ -155,30 +161,31 @@ fun AboutScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.about_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { onBack?.invoke() ?: (context as? Activity)?.finish() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = { onBack?.invoke() ?: (context as? Activity)?.finish() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = paddingValues.calculateBottomPadding() + 24.dp,
-            )
-        ) {
-            item {
-                MaterialAboutHeader(
-                    versionInfoText = versionInfoText,
-                    onVersionClick = ::copyVersionInfo,
-                    onHeaderTap = ::handleDevModeTap
-                )
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val useTwoPane = layoutInfo.isLandscape && maxWidth >= 600.dp
+            val singlePaneHorizontalExtra = if (
+                !useTwoPane &&
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
             }
+            val dividerColor = MaterialTheme.colorScheme.outlineVariant
+            val aboutCards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
 
             item { SettingsSectionHeader(text = stringResource(R.string.about_title)) }
             item {
@@ -327,6 +334,63 @@ fun AboutScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 )
+            }
+            }
+            if (useTwoPane) {
+                AdaptiveTwoPane(
+                    startWeight = 0.42f,
+                    dividerColor = dividerColor,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    start = paddingValues.calculateStartPadding(layoutDirection),
+                                    top = paddingValues.calculateTopPadding(),
+                                    bottom = paddingValues.calculateBottomPadding(),
+                                )
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            MaterialAboutHeader(
+                                versionInfoText = versionInfoText,
+                                onVersionClick = ::copyVersionInfo,
+                                onHeaderTap = ::handleDevModeTap,
+                            )
+                        }
+                    },
+                    endPane = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = paddingValues.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 4.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            content = aboutCards,
+                        )
+                    },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = paddingValues.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    )
+                ) {
+                    item {
+                        MaterialAboutHeader(
+                            versionInfoText = versionInfoText,
+                            onVersionClick = ::copyVersionInfo,
+                            onHeaderTap = ::handleDevModeTap
+                        )
+                    }
+                    aboutCards()
+                }
             }
         }
 

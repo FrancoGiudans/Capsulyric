@@ -79,6 +79,9 @@ import com.example.islandlyrics.ui.navigation.BaseActivity
 import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
+import androidx.compose.foundation.layout.BoxWithConstraints
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.mikepenz.aboutlibraries.Libs
@@ -132,15 +135,26 @@ private fun OpenSourceLicensesScreen(
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            )
-        ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
             item {
                 SettingsSectionHeader(
                     text = stringResource(R.string.open_source_licenses_header),
@@ -204,6 +218,7 @@ private fun OpenSourceLicensesScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

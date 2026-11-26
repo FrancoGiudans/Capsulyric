@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -57,6 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.AdaptiveReadableBox
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
@@ -78,7 +83,10 @@ import kotlin.math.roundToInt
 @Composable
 fun FloatingLyricsSettingsSubScreen(
     prefs: SharedPreferences,
-    settingModifier: @Composable (String) -> Modifier = { Modifier }
+    settingModifier: @Composable (String) -> Modifier = { Modifier },
+    twoPanePreview: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(),
+    footerContent: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -156,26 +164,33 @@ fun FloatingLyricsSettingsSubScreen(
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    FloatingLyricsSettingsPreview(
-        style = FloatingLyricsStyle(
-            textSizeSp = textSizeSp,
-            textWeight = textWeight,
-            baseTextColor = customTextColor.toArgb(),
-            followAlbumColor = followAlbumColor,
-            showAlbumArt = showAlbumArt,
-            enableTextStroke = textStroke,
-            enableTextBackground = textBackground
-        ),
-        display = FloatingLyricsDisplayConfig(
-            secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
-            showSecondLine = showSecondLine,
-            neighborAlignment = neighborAlignment,
-            wordHighlight = wordHighlight
-        ),
-        useMiuix = false
-    )
+    val previewContent: @Composable (Modifier) -> Unit = { previewModifier ->
+        Box(modifier = previewModifier, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().widthIn(max = 380.dp)) {
+                FloatingLyricsSettingsPreview(
+                    style = FloatingLyricsStyle(
+                        textSizeSp = textSizeSp,
+                        textWeight = textWeight,
+                        baseTextColor = customTextColor.toArgb(),
+                        followAlbumColor = followAlbumColor,
+                        showAlbumArt = showAlbumArt,
+                        enableTextStroke = textStroke,
+                        enableTextBackground = textBackground
+                    ),
+                    display = FloatingLyricsDisplayConfig(
+                        secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
+                        showSecondLine = showSecondLine,
+                        neighborAlignment = neighborAlignment,
+                        wordHighlight = wordHighlight
+                    ),
+                    useMiuix = false
+                )
+            }
+        }
+    }
 
-    SettingsCard {
+    val settingsCardContent: @Composable () -> Unit = {
+        SettingsCard {
         SettingsSwitchItem(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             subtitle = stringResource(R.string.settings_floating_lyrics_enabled_desc),
@@ -379,6 +394,54 @@ fun FloatingLyricsSettingsSubScreen(
                     .height(48.dp)
         ) {
                 Text(stringResource(R.string.settings_floating_position_reset))
+        }
+        }
+    }
+
+    if (twoPanePreview) {
+        val layoutDirection = LocalLayoutDirection.current
+        AdaptiveTwoPane(
+            startWeight = 0.40f,
+            spacing = 16.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
+                    end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp
+                ),
+            startPane = {
+                previewContent(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding() + 12.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 24.dp
+                        )
+                )
+            },
+            endPane = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding() + 12.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 24.dp
+                        )
+                ) {
+                    settingsCardContent()
+                    footerContent?.invoke()
+                }
+            }
+        )
+    } else {
+        AdaptiveReadableBox {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                previewContent(Modifier.fillMaxWidth())
+                settingsCardContent()
+                footerContent?.invoke()
+            }
         }
     }
 

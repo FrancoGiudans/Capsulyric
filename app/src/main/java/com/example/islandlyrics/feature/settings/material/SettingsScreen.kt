@@ -141,6 +141,10 @@ import com.example.islandlyrics.core.settings.search.SettingsSearchHistoryStore
 import com.example.islandlyrics.core.settings.search.SettingsUiVariant
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
+import androidx.compose.foundation.background
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurRadius
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.material.blur.materialBlurPanel
@@ -175,9 +179,12 @@ internal fun SettingsScreen(
     onOpenLab: (() -> Unit)? = null,
     onNavigateAction: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     showBackButton: Boolean = true,
-    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
+    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    isMasterPane: Boolean = false,
+    selectedDetailTarget: SettingsNavigationTarget? = null,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
     val focusManager = LocalFocusManager.current
     val layoutDirection = LocalLayoutDirection.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
@@ -641,6 +648,10 @@ internal fun SettingsScreen(
                         {}
                     },
                 )
+                val hasStartRail = LocalAdaptiveHasStartRail.current
+                val searchCutoutInsets = WindowInsets.displayCutout.only(
+                    if (hasStartRail) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -650,6 +661,8 @@ internal fun SettingsScreen(
                             tint = Color.Transparent,
                             backgroundColor = materialPageContainerColor(),
                         )
+                        .then(if (isMasterPane) Modifier else Modifier.windowInsetsPadding(searchCutoutInsets)),
+                    contentAlignment = Alignment.Center
                 ) {
                     TextField(
                         value = settingsSearchQuery,
@@ -658,7 +671,10 @@ internal fun SettingsScreen(
                             settingsSearchExpanded = true
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .then(
+                                if (isMasterPane) Modifier.fillMaxWidth()
+                                else Modifier.widthIn(max = layoutInfo.maxReadableWidth).fillMaxWidth()
+                            )
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .heightIn(min = 52.dp)
                             .onFocusChanged { focusState ->
@@ -714,16 +730,30 @@ internal fun SettingsScreen(
         var filterOnlineLyricInfoLines by remember { mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
         var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
+        val singlePaneHorizontalExtra = if (!isMasterPane && layoutInfo.widthDp > layoutInfo.maxReadableWidth) {
+            (layoutInfo.widthDp - layoutInfo.maxReadableWidth) / 2
+        } else {
+            0.dp
+        }
 
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = paddingValues.calculateStartPadding(layoutDirection),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(layoutDirection),
-                bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
-            )
+            contentPadding = if (isMasterPane) {
+                PaddingValues(
+                    start = paddingValues.calculateStartPadding(layoutDirection),
+                    top = paddingValues.calculateTopPadding(),
+                    end = 4.dp,
+                    bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
+                )
+            } else {
+                paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraBottom = 24.dp + extraBottomPadding,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                )
+            }
         ) {
             if (settingsSearchExpanded) {
                 if (settingsSearchQuery.isBlank()) {
@@ -830,12 +860,14 @@ internal fun SettingsScreen(
                     SettingsActionItem(
                         title = stringResource(R.string.settings_capsule_notification),
                         icon = Icons.Filled.MusicNote,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.CAPSULE_NOTIFICATION,
                         onClick = onOpenCapsuleNotification
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.settings_floating_lyrics),
                         icon = Icons.Filled.Tune,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.DESKTOP_LYRICS,
                         onClick = {
                             onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
                         }
@@ -844,6 +876,7 @@ internal fun SettingsScreen(
                     SettingsActionItem(
                         title = stringResource(R.string.page_title_personalization),
                         icon = Icons.Filled.Palette,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.APP_UI,
                         onClick = onOpenCustomSettings
                     )
                 }
@@ -857,6 +890,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.settings_local_lyrics_title),
                         summary = stringResource(R.string.settings_local_lyrics_directories),
                         icon = Icons.Filled.Folder,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES,
                         onClick = onOpenLocalLyricDirectories
                     )
                     if (!offlineModeEnabled) {
@@ -865,6 +899,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.online_lyric_rematch_title),
                             summary = stringResource(R.string.online_lyric_rematch_settings_desc),
                             icon = Icons.Filled.Refresh,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.ONLINE_LYRIC_REMATCH,
                             onClick = {
                                 onOpenOnlineLyricRematch?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
@@ -875,8 +910,10 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.apple_music_settings_title),
                             summary = stringResource(R.string.apple_music_settings_summary),
                             icon = Icons.Filled.Link,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.APPLE_MUSIC,
                             onClick = {
-                                context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                                onNavigateAction?.invoke(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
                             }
                         )
                     }
@@ -935,6 +972,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.lastfm_title),
                             summary = stringResource(R.string.lastfm_settings_summary),
                             icon = Icons.Filled.Link,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LAST_FM,
                             onClick = {
                                 onOpenLastFm?.invoke()
                                     ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
@@ -952,6 +990,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
                         icon = Icons.Filled.Storage,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.CACHE_MANAGEMENT,
                         onClick = {
                             onOpenCacheManagement?.invoke()
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
@@ -1119,6 +1158,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
                         icon = Icons.AutoMirrored.Filled.Help,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.FAQ,
                         onClick = {
                             onOpenFaq?.invoke()
                                 ?: context.startActivity(Intent(context, FAQActivity::class.java))
@@ -1129,6 +1169,7 @@ internal fun SettingsScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.settings_community_header),
                             icon = Icons.Filled.Info,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.COMMUNITY,
                             onClick = {
                                 onOpenCommunity?.invoke()
                             }
@@ -1139,6 +1180,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.about_title),
                         summary = stringResource(R.string.settings_about_capsulyric),
                         icon = Icons.Filled.Info,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.ABOUT,
                         onClick = {
                             onOpenAbout?.invoke()
                                 ?: context.startActivity(Intent(context, AboutActivity::class.java))
@@ -1155,6 +1197,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
                             icon = Icons.Filled.BugReport,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.DIAGNOSTICS,
                             onClick = onShowDiagnostics
                         )
                         SettingsCardDivider()
@@ -1162,6 +1205,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.title_lab),
                             summary = stringResource(R.string.diag_lab_page_desc),
                             icon = Icons.Filled.Science,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LAB,
                             onClick = {
                                 onOpenLab?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))
@@ -2086,11 +2130,20 @@ fun SettingsActionItem(
     title: String,
     icon: ImageVector,
     summary: String? = null,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
     onClick: () -> Unit
 ) {
     ListItem(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f))
+                } else {
+                    Modifier
+                }
+            )
             .clickable(onClick = onClick),
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent
