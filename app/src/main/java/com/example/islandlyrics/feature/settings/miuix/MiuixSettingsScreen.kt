@@ -69,10 +69,12 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
@@ -147,12 +149,14 @@ internal fun MiuixSettingsScreen(
     onNavigateAction: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
+    extraBottomPadding: Dp = 0.dp,
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val resources = LocalResources.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -182,6 +186,7 @@ internal fun MiuixSettingsScreen(
     LaunchedEffect(settingsSearchExpanded) {
         if (settingsSearchExpanded) {
             searchHistory = SettingsSearchHistoryStore.getHistory(context)
+            listState.scrollToItem(0)
         }
     }
     val searchResults = remember(settingsSearchQuery, context) {
@@ -207,8 +212,19 @@ internal fun MiuixSettingsScreen(
     }
 
     LaunchedEffect(mainSettingHighlightKey) {
-        if (mainSettingHighlightKey != null) {
-            delay(120)
+        val key = mainSettingHighlightKey
+        if (key != null) {
+            val cardIndex = when (key) {
+                "key_language", "key_recommend_media_app",
+                "key_new_playing_app_alert", "key_hide_recents",
+                "key_hide_launcher" -> 3
+                "key_filter_online_lyric_info_lines" -> 5
+                else -> null
+            }
+            if (cardIndex != null) {
+                listState.animateScrollToItem(cardIndex)
+            }
+            delay(150)
             mainSettingBringIntoViewRequester.bringIntoView()
         }
     }
@@ -437,17 +453,11 @@ internal fun MiuixSettingsScreen(
     }
 
     // State
-    var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
-
     val showPrivacyDialog = remember { mutableStateOf(false) }
-    val showFeedbackPopup = remember { mutableStateOf(false) }
     val showHideLauncherDialog = remember { mutableStateOf(false) }
     var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
-    MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
-
-    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
     fun checkNotificationPermission(): Boolean {
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
@@ -489,15 +499,6 @@ internal fun MiuixSettingsScreen(
 
     var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
-    LaunchedEffect(isHyperOsSupported) {
-        if (!isHyperOsSupported) {
-            if (dynamicIconEnabled) {
-                dynamicIconEnabled = false
-                prefs.edit { putBoolean("dynamic_icon_enabled", false) }
-            }
-        }
-    }
-
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -536,7 +537,7 @@ internal fun MiuixSettingsScreen(
     }
 
     val popupShowing = showPrivacyDialog.value ||
-            showFeedbackPopup.value ||
+            showHideLauncherDialog.value ||
             updateReleaseInfo != null ||
             settingsSearchExpanded
 
@@ -547,6 +548,7 @@ internal fun MiuixSettingsScreen(
                 if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
                     settingsSearchExpanded = false
                     settingsSearchQuery = ""
+                    focusManager.clearFocus()
                     mainSettingHighlightKey = action.targetItemKey
                 } else if (onNavigateAction != null) {
                     onNavigateAction(action)
@@ -572,30 +574,37 @@ internal fun MiuixSettingsScreen(
             }
             is SettingsSearchAction.TriggerDialog -> {
                 when (action.dialog) {
-                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> showPrivacyDialog.value = true
-                    MainSettingsDialogType.HIDE_LAUNCHER -> showHideLauncherDialog.value = true
+                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> {
+                        if (notificationGranted) {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        } else {
+                            showPrivacyDialog.value = true
+                        }
+                    }
+                    MainSettingsDialogType.HIDE_LAUNCHER -> {
+                        if (launcherHidden) {
+                            launcherHidden = false
+                            LauncherAliasManager.setAliasEnabled(context, true)
+                        } else {
+                            showHideLauncherDialog.value = true
+                        }
+                    }
                     MainSettingsDialogType.BACKUP_EXPORT -> showExportCategoryDialog = true
                     MainSettingsDialogType.BACKUP_IMPORT -> {
                         importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                     }
+                    MainSettingsDialogType.IMPORT_OTHER_APPS -> {
+                        if (canChooseImportSource) thirdPartyImporter.openSources()
+                    }
                     MainSettingsDialogType.LANGUAGE_PICKER -> {
-                        val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        try {
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_LOCALE_SETTINGS))
-                            } catch (_: Exception) {}
-                        }
+                        mainSettingHighlightKey = "key_language"
                     }
                 }
             }
             is SettingsSearchAction.LaunchIntent -> {
                 try {
                     context.startActivity(action.intentBuilder(context))
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Ignore
                 }
             }
@@ -624,6 +633,48 @@ internal fun MiuixSettingsScreen(
                     }
                 } else {
                     {}
+                },
+                bottomContent = {
+                    SearchBar(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
+                        inputField = {
+                            InputField(
+                                query = settingsSearchQuery,
+                                onQueryChange = { settingsSearchQuery = it },
+                                onSearch = { },
+                                expanded = settingsSearchExpanded,
+                                onExpandedChange = { settingsSearchExpanded = it },
+                                label = stringResource(R.string.settings_search)
+                            )
+                        },
+                        outsideEndAction = {
+                            Box(
+                                modifier = Modifier
+                                    .heightIn(min = 44.dp)
+                                    .clickable(
+                                        interactionSource = null,
+                                        indication = null,
+                                    ) {
+                                        settingsSearchExpanded = false
+                                        settingsSearchQuery = ""
+                                        focusManager.clearFocus()
+                                    }
+                                    .padding(start = 12.dp, end = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.backup_dialog_cancel),
+                                    style = MiuixTheme.textStyles.main,
+                                    color = MiuixTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                        insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
+                        expanded = settingsSearchExpanded,
+                        onExpandedChange = { settingsSearchExpanded = it }
+                    ) { }
                 }
             )
         },
@@ -631,7 +682,8 @@ internal fun MiuixSettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 82.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp + extraBottomPadding),
                 contentAlignment = Alignment.BottomCenter
             ) {
                 MiuixSnackbarHost(
@@ -648,46 +700,10 @@ internal fun MiuixSettingsScreen(
                 .fillMaxSize()
                 .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 116.dp
+                top = padding.calculateTopPadding() + 4.dp,
+                bottom = padding.calculateBottomPadding() + 24.dp + extraBottomPadding
             )
         ) {
-            // 搜索栏顶部留白，与其他页面 +12.dp 顶间距统一，避免贴顶栏
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-            item {
-                SearchBar(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    inputField = {
-                        InputField(
-                            query = settingsSearchQuery,
-                            onQueryChange = { settingsSearchQuery = it },
-                            onSearch = { },
-                            expanded = settingsSearchExpanded,
-                            onExpandedChange = { settingsSearchExpanded = it },
-                            label = stringResource(R.string.settings_search)
-                        )
-                    },
-                    outsideEndAction = {
-                        Text(
-                            modifier = Modifier
-                                .clickable(
-                                    interactionSource = null,
-                                    indication = null,
-                                ) {
-                                    settingsSearchExpanded = false
-                                    settingsSearchQuery = ""
-                                }
-                                .padding(start = 12.dp),
-                            text = stringResource(R.string.backup_dialog_cancel),
-                            color = MiuixTheme.colorScheme.primary,
-                        )
-                    },
-                    insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
-                    expanded = settingsSearchExpanded,
-                    onExpandedChange = { settingsSearchExpanded = it }
-                ) { }
-            }
-
             if (settingsSearchExpanded) {
                 if (settingsSearchQuery.isBlank()) {
                     if (searchHistory.isNotEmpty()) {
@@ -793,6 +809,8 @@ internal fun MiuixSettingsScreen(
                                             SettingsSearchHistoryStore.addHistory(context, settingsSearchQuery.trim())
                                             searchHistory = SettingsSearchHistoryStore.getHistory(context)
                                             settingsSearchExpanded = false
+                                            settingsSearchQuery = ""
+                                            focusManager.clearFocus()
                                             handleSettingsAction(item.action)
                                         }
                                     )
@@ -802,9 +820,7 @@ internal fun MiuixSettingsScreen(
                     }
                 }
             } else {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-
-            // ═══ 1. Core ═══
+            // ═══ 1. Core ═══ (index 0, 1)
             item { SmallTitle(text = stringResource(R.string.settings_core_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -822,7 +838,7 @@ internal fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 2. General ═══
+            // ═══ 2. General ═══ (index 2, 3)
             item { SmallTitle(text = stringResource(R.string.settings_general_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -843,11 +859,12 @@ internal fun MiuixSettingsScreen(
                     )
                     val currentLangCode = ThemeHelper.getLanguage(context)
                     val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
-                    
+
                     SuperDropdown(
                         title = stringResource(R.string.settings_language),
                         items = langNames,
                         selectedIndex = currentLangIndex,
+                        modifier = mainSettingModifier("key_language"),
                         onSelectedIndexChange = { index ->
                             val code = langOptions[index]
                             ThemeHelper.setLanguage(context, code)
@@ -901,6 +918,7 @@ internal fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_hide_launcher),
                         summary = stringResource(R.string.settings_hide_launcher_desc),
                         checked = launcherHidden,
+                        modifier = mainSettingModifier("key_hide_launcher"),
                         onCheckedChange = { newValue ->
                             if (newValue) {
                                 showHideLauncherDialog.value = true
@@ -913,49 +931,7 @@ internal fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 3. Permissions ═══
-            item { SmallTitle(text = stringResource(R.string.settings_permissions_header)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperSwitch(
-                        title = stringResource(R.string.perm_read_notif),
-                        summary = stringResource(R.string.perm_read_notif_desc),
-                        checked = notificationGranted,
-                        onCheckedChange = {
-                            if (notificationGranted) {
-                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                            } else {
-                                showPrivacyDialog.value = true
-                            }
-                        }
-                    )
-                    SuperSwitch(
-                        title = stringResource(R.string.perm_post_notif),
-                        summary = stringResource(R.string.perm_post_notif_desc),
-                        checked = postNotificationGranted,
-                        onCheckedChange = { requestPostNotificationPermission() }
-                    )
-                    if (showPostNotificationSettings && !postNotificationGranted) {
-                        SuperArrow(
-                            title = stringResource(R.string.main_status_open_settings),
-                            onClick = { openPostNotificationSettings() }
-                        )
-                    }
-
-
-                    SuperArrow(
-                        title = stringResource(R.string.settings_general_battery),
-                        summary = stringResource(R.string.summary_optimize_battery),
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            intent.data = "package:${context.packageName}".toUri()
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-            }
-
-            // ═══ 4. Lyric Tools（本地歌词 + 歌词工具）═══
+            // ═══ 3. Lyric Tools（本地歌词 + 歌词工具）═══ (index 4, 5)
             item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -1012,6 +988,56 @@ internal fun MiuixSettingsScreen(
                     }
                 }
             }
+
+            // ═══ 4. Permissions ═══ (index 6, 7)
+            item { SmallTitle(text = stringResource(R.string.settings_permissions_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperSwitch(
+                        title = stringResource(R.string.perm_read_notif),
+                        summary = stringResource(R.string.perm_read_notif_desc),
+                        checked = notificationGranted,
+                        onCheckedChange = {
+                            if (notificationGranted) {
+                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            } else {
+                                showPrivacyDialog.value = true
+                            }
+                        }
+                    )
+                    SuperSwitch(
+                        title = stringResource(R.string.perm_post_notif),
+                        summary = stringResource(R.string.perm_post_notif_desc),
+                        checked = postNotificationGranted,
+                        onCheckedChange = { requestPostNotificationPermission() }
+                    )
+                    if (showPostNotificationSettings && !postNotificationGranted) {
+                        SuperArrow(
+                            title = stringResource(R.string.main_status_open_settings),
+                            onClick = { openPostNotificationSettings() }
+                        )
+                    }
+
+                    SuperArrow(
+                        title = stringResource(R.string.settings_general_battery),
+                        summary = stringResource(R.string.summary_optimize_battery),
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = "package:${context.packageName}".toUri()
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    )
+                }
+            }
+
+            // ═══ 5. Backup & Restore ═══ (index 8, 9)
             item { SmallTitle(text = stringResource(R.string.settings_backup_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -1037,7 +1063,7 @@ internal fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 5. Help & About ═══
+            // ═══ 6. Help & About ═══ (index 10, 11)
             item { SmallTitle(text = stringResource(R.string.settings_help_about_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -1097,10 +1123,10 @@ internal fun MiuixSettingsScreen(
             show = showPrivacyDialog.value,
             onDismissRequest = { showPrivacyDialog.value = false }
         ) {
-            androidx.compose.material3.Text(
+            Text(
                 text = stringResource(R.string.dialog_privacy_message),
                 color = MiuixTheme.colorScheme.onSurface,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                style = MiuixTheme.textStyles.body2,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             Row(
@@ -1135,10 +1161,10 @@ internal fun MiuixSettingsScreen(
             show = showHideLauncherDialog.value,
             onDismissRequest = { showHideLauncherDialog.value = false }
         ) {
-            androidx.compose.material3.Text(
+            Text(
                 text = stringResource(R.string.dialog_hide_launcher_message),
                 color = MiuixTheme.colorScheme.onSurface,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                style = MiuixTheme.textStyles.body2,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             Row(

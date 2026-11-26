@@ -163,9 +163,11 @@ fun CustomSettingsScreen(
         }
     }
 
-    val targetTab = initialTab ?: if (orderedTabs.size == 1) orderedTabs.firstOrNull() else null
-    LaunchedEffect(targetItemKey, pagerState.currentPage) {
-        if (targetItemKey != null && (targetTab == null || orderedTabs.getOrNull(pagerState.currentPage) == targetTab)) {
+    var pendingHighlightTab by remember(initialTab, orderedTabs) {
+        mutableStateOf(initialTab ?: if (orderedTabs.size == 1) orderedTabs.firstOrNull() else null)
+    }
+    LaunchedEffect(activeHighlightKey, pagerState.currentPage, pendingHighlightTab) {
+        if (activeHighlightKey != null && (pendingHighlightTab == null || orderedTabs.getOrNull(pagerState.currentPage) == pendingHighlightTab)) {
             delay(120)
             targetBringIntoViewRequester.bringIntoView()
         }
@@ -187,6 +189,8 @@ fun CustomSettingsScreen(
 
     fun handleNavigate(action: SettingsSearchAction.Navigate) {
         if (action.tab != null && orderedTabs.contains(action.tab)) {
+            pendingHighlightTab = action.tab
+            activeHighlightKey = action.targetItemKey
             scope.launch {
                 pagerState.animateScrollToPage(orderedTabs.indexOf(action.tab))
             }
@@ -854,6 +858,7 @@ fun CustomSettingsScreen(
                                             title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
                                             subtitle = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
                                             checked = superIslandFullLyricShowLeftCover,
+                                            modifier = settingModifier("key_super_island_show_left_cover"),
                                             onCheckedChange = {
                                                 superIslandFullLyricShowLeftCover = it
                                                 viewModel.dispatch(CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover(it))
@@ -2002,7 +2007,10 @@ fun CustomSettingsScreen(
                             }
                         }
                         CustomSettingsTab.DESKTOP_LYRICS -> {
-                            FloatingLyricsSettingsSubScreen(prefs)
+                            FloatingLyricsSettingsSubScreen(
+                                prefs = prefs,
+                                settingModifier = { settingModifier(it) }
+                            )
                         }
                     }
                     MaterialLookingForOtherSettings(

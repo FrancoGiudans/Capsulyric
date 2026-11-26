@@ -66,7 +66,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
-fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: CoroutineScope) {
+fun MiuixFloatingLyricsSettingsSubScreen(
+    prefs: SharedPreferences,
+    scope: CoroutineScope,
+    settingModifier: @Composable (String) -> Modifier = { Modifier }
+) {
     val context = LocalContext.current
 
     var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
@@ -162,6 +166,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             summary = stringResource(R.string.settings_floating_lyrics_enabled_desc),
             checked = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_enabled"),
             onCheckedChange = { enabled ->
                 if (enabled) enableLyrics() else LabFeatureManager.setFloatingLyricsEnabled(context, false)
             }
@@ -171,6 +176,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             summary = stringResource(R.string.settings_floating_lyrics_show_desc),
             checked = featureEnabled && !floatingSession.isHidden,
             enabled = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_show"),
             onCheckedChange = { visible ->
                 if (visible) showLyrics() else FloatingLyricsVisibility.hide(prefs)
             }
@@ -180,6 +186,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             items = FloatingLyricsRecovery.entries.map { stringResource(it.label) },
             selectedIndex = recovery.ordinal,
             title = stringResource(R.string.settings_floating_recovery),
+            modifier = settingModifier("key_floating_recovery"),
             onSelectedIndexChange = { index ->
                 prefs.edit { putString(FloatingLyricsVisibility.RECOVERY, FloatingLyricsRecovery.entries[index].value) }
             }
@@ -188,6 +195,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_keep_on_pause),
             summary = stringResource(R.string.settings_floating_keep_on_pause_desc),
             checked = keepOnPause,
+            modifier = settingModifier("key_floating_keep_on_pause"),
             onCheckedChange = { value ->
                 prefs.edit { putBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, value) }
             }
@@ -196,6 +204,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_show_album_art),
             summary = stringResource(R.string.settings_floating_show_album_art_desc),
             checked = showAlbumArt,
+            modifier = settingModifier("key_floating_show_album_art"),
             onCheckedChange = {
                 showAlbumArt = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
@@ -206,6 +215,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_text_stroke),
             summary = stringResource(R.string.settings_floating_text_stroke_desc),
             checked = textStroke,
+            modifier = settingModifier("key_floating_text_stroke"),
             onCheckedChange = {
                 textStroke = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
@@ -216,6 +226,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_text_background),
             summary = stringResource(R.string.settings_floating_text_background_desc),
             checked = textBackground,
+            modifier = settingModifier("key_floating_text_background"),
             onCheckedChange = {
                 textBackground = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
@@ -226,6 +237,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_show_second_line),
             summary = stringResource(R.string.settings_floating_show_second_line_desc),
             checked = showSecondLine,
+            modifier = settingModifier("key_floating_show_second_line"),
             onCheckedChange = {
                 showSecondLine = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
@@ -252,6 +264,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_word_highlight),
             summary = stringResource(R.string.settings_floating_word_highlight_desc),
             checked = wordHighlight,
+            modifier = settingModifier("key_floating_word_highlight"),
             onCheckedChange = {
                 wordHighlight = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
@@ -262,6 +275,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_follow_album_color),
             summary = stringResource(R.string.settings_floating_follow_album_color_desc),
             checked = followAlbumColor,
+            modifier = settingModifier("key_floating_follow_album_color"),
             onCheckedChange = {
                 if (it && floatingTextColorEditing) {
                     customTextColor = floatingTextColorSnapshot
@@ -304,6 +318,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
 
         SuperArrow(
             title = stringResource(R.string.settings_floating_font_settings),
+            modifier = settingModifier("key_floating_font_settings"),
             onClick = { showFontSettings = true }
         )
 

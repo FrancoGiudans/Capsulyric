@@ -101,7 +101,15 @@ internal fun MiuixLabScreen(
     }
     LaunchedEffect(targetItemKey) {
         if (targetItemKey != null) {
-            delay(120)
+            val cardIndex = when (targetItemKey) {
+                "key_full_offline_mode" -> 2
+                "key_lyric_visual_center" -> 5
+                else -> null
+            }
+            if (cardIndex != null) {
+                listState.animateScrollToItem(cardIndex)
+            }
+            delay(150)
             targetBringIntoViewRequester.bringIntoView()
         }
     }
@@ -195,6 +203,7 @@ internal fun MiuixLabScreen(
                         title = stringResource(R.string.settings_full_offline_mode),
                         summary = stringResource(R.string.settings_full_offline_mode_desc),
                         checked = offlineModeEnabled,
+                        modifier = targetModifier("key_full_offline_mode"),
                         onCheckedChange = { enabled ->
                             if (enabled) {
                                 showOfflineModeDialog.value = true

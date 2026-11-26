@@ -98,7 +98,15 @@ internal fun LabScreen(
     }
     androidx.compose.runtime.LaunchedEffect(targetItemKey) {
         if (targetItemKey != null) {
-            delay(120)
+            val cardIndex = when (targetItemKey) {
+                "key_full_offline_mode" -> 2
+                "key_lyric_visual_center", "key_material_page_blur" -> 4
+                else -> null
+            }
+            if (cardIndex != null) {
+                listState.animateScrollToItem(cardIndex)
+            }
+            delay(150)
             targetBringIntoViewRequester.bringIntoView()
         }
     }
@@ -185,6 +193,7 @@ internal fun LabScreen(
                         title = stringResource(R.string.settings_full_offline_mode),
                         subtitle = stringResource(R.string.settings_full_offline_mode_desc),
                         checked = offlineModeEnabled,
+                        modifier = targetModifier("key_full_offline_mode"),
                         onCheckedChange = { enabled ->
                             if (enabled) {
                                 showOfflineModeDialog = true

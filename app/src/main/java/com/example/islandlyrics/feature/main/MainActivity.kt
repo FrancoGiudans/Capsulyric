@@ -706,6 +706,7 @@ class MainActivity : BaseActivity() {
                                     onOpenLab = { pushPage(AppPage.Lab()) },
                                     onNavigateAction = ::handleNavigate,
                                     showBackButton = false,
+                                    extraBottomPadding = if (targetBottomBarVisible) 92.dp else 0.dp,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
                             }

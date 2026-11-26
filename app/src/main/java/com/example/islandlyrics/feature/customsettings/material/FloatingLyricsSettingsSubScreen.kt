@@ -76,7 +76,10 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
+fun FloatingLyricsSettingsSubScreen(
+    prefs: SharedPreferences,
+    settingModifier: @Composable (String) -> Modifier = { Modifier }
+) {
     val context = LocalContext.current
 
     var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
@@ -177,6 +180,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             subtitle = stringResource(R.string.settings_floating_lyrics_enabled_desc),
             checked = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_enabled"),
             onCheckedChange = { enabled ->
                 if (enabled) enableLyrics() else LabFeatureManager.setFloatingLyricsEnabled(context, false)
             }
@@ -187,6 +191,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             subtitle = stringResource(R.string.settings_floating_lyrics_show_desc),
             checked = featureEnabled && !floatingSession.isHidden,
             enabled = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_show"),
             onCheckedChange = { visible ->
                 if (visible) showLyrics() else FloatingLyricsVisibility.hide(prefs)
             }
@@ -198,6 +203,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             SettingsTextItem(
                 title = stringResource(R.string.settings_floating_recovery),
                 value = stringResource(recovery.label),
+                modifier = settingModifier("key_floating_recovery"),
                 onClick = { recoveryMenuExpanded = true }
             )
             MaterialBlurDropdownMenu(
@@ -220,6 +226,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             title = stringResource(R.string.settings_floating_keep_on_pause),
             subtitle = stringResource(R.string.settings_floating_keep_on_pause_desc),
             checked = keepOnPause,
+            modifier = settingModifier("key_floating_keep_on_pause"),
             onCheckedChange = { value ->
                 prefs.edit { putBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, value) }
             }
@@ -229,6 +236,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_show_album_art),
                 subtitle = stringResource(R.string.settings_floating_show_album_art_desc),
                 checked = showAlbumArt,
+                modifier = settingModifier("key_floating_show_album_art"),
                 onCheckedChange = {
                     showAlbumArt = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
@@ -240,6 +248,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_text_stroke),
                 subtitle = stringResource(R.string.settings_floating_text_stroke_desc),
                 checked = textStroke,
+                modifier = settingModifier("key_floating_text_stroke"),
                 onCheckedChange = {
                     textStroke = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
@@ -251,6 +260,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_text_background),
                 subtitle = stringResource(R.string.settings_floating_text_background_desc),
                 checked = textBackground,
+                modifier = settingModifier("key_floating_text_background"),
                 onCheckedChange = {
                     textBackground = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
@@ -262,6 +272,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_show_second_line),
                 subtitle = stringResource(R.string.settings_floating_show_second_line_desc),
                 checked = showSecondLine,
+                modifier = settingModifier("key_floating_show_second_line"),
                 onCheckedChange = {
                     showSecondLine = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
@@ -288,6 +299,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_word_highlight),
                 subtitle = stringResource(R.string.settings_floating_word_highlight_desc),
                 checked = wordHighlight,
+                modifier = settingModifier("key_floating_word_highlight"),
                 onCheckedChange = {
                     wordHighlight = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
@@ -299,6 +311,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_follow_album_color),
                 subtitle = stringResource(R.string.settings_floating_follow_album_color_desc),
                 checked = followAlbumColor,
+                modifier = settingModifier("key_floating_follow_album_color"),
                 onCheckedChange = {
                     if (it && floatingTextColorEditing) {
                         customTextColor = floatingTextColorSnapshot
@@ -342,7 +355,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
 
         SettingsCardDivider()
         ListItem(
-            modifier = Modifier.clickable { showFontSettings = true },
+            modifier = settingModifier("key_floating_font_settings").clickable { showFontSettings = true },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             headlineContent = {
                 Text(stringResource(R.string.settings_floating_font_settings), style = MaterialTheme.typography.bodyLarge)
