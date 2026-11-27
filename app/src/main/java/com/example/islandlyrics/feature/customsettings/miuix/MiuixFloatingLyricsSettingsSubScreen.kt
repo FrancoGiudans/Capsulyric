@@ -118,6 +118,9 @@ fun MiuixFloatingLyricsSettingsSubScreen(
     }
     val showSecondaryTextModeDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
+    var wordAnimationHighFps by remember(prefs) {
+        mutableStateOf(LabFeatureManager.isFloatingWordHighFpsEnabled(context))
+    }
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
@@ -132,6 +135,8 @@ fun MiuixFloatingLyricsSettingsSubScreen(
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { updated, key ->
             when (key) {
                 LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED -> featureEnabled = LabFeatureManager.isFloatingLyricsEnabled(updated)
+                LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED ->
+                    wordAnimationHighFps = LabFeatureManager.isFloatingWordHighFpsEnabled(updated)
                 FloatingLyricsVisibility.RECOVERY, FloatingLyricsVisibility.RESUME_NEXT_TRACK ->
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
@@ -173,6 +178,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(
                         neighborAlignment = neighborAlignment,
                         wordHighlight = wordHighlight
                     ),
+                    wordAnimationHighFps = wordAnimationHighFps,
                     useMiuix = true
                 )
             }
@@ -291,6 +297,20 @@ fun MiuixFloatingLyricsSettingsSubScreen(
             onCheckedChange = {
                 wordHighlight = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
+            }
+        )
+
+        SuperDropdown(
+            items = listOf(
+                stringResource(R.string.settings_floating_word_animation_fps_value, 30),
+                stringResource(R.string.settings_floating_word_animation_fps_value, 60)
+            ),
+            selectedIndex = if (wordAnimationHighFps) 1 else 0,
+            title = stringResource(R.string.settings_floating_word_animation_fps),
+            summary = stringResource(R.string.settings_floating_word_animation_fps_desc),
+            modifier = settingModifier("key_floating_word_animation_fps"),
+            onSelectedIndexChange = { index ->
+                LabFeatureManager.setFloatingWordHighFpsEnabled(context, index == 1)
             }
         )
 

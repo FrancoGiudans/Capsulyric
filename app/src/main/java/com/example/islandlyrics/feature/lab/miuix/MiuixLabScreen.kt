@@ -144,12 +144,6 @@ internal fun MiuixLabScreen(
     var lyricVisualCenterEnabled by remember {
         mutableStateOf(LabFeatureManager.isLyricVisualCenterEnabled(context))
     }
-    var floatingLyricsLabEnabled by remember {
-        mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
-    }
-    var floatingWordHighFpsEnabled by remember {
-        mutableStateOf(LabFeatureManager.isFloatingWordHighFpsEnabled(context))
-    }
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
@@ -325,27 +319,6 @@ internal fun MiuixLabScreen(
                             LabFeatureManager.setLyricVisualCenterEnabled(context, enabled)
                         }
                     )
-
-                    SuperSwitch(
-                        title = stringResource(R.string.diag_lab_floating_lyrics_title),
-                        summary = stringResource(R.string.diag_lab_floating_lyrics_desc),
-                        checked = floatingLyricsLabEnabled,
-                        onCheckedChange = {
-                            floatingLyricsLabEnabled = it
-                            LabFeatureManager.setFloatingLyricsEnabled(context, it)
-                        }
-                    )
-                    if (floatingLyricsLabEnabled) {
-                        SuperSwitch(
-                            title = stringResource(R.string.diag_lab_floating_word_high_fps_title),
-                            summary = stringResource(R.string.diag_lab_floating_word_high_fps_desc),
-                            checked = floatingWordHighFpsEnabled,
-                            onCheckedChange = {
-                                floatingWordHighFpsEnabled = it
-                                LabFeatureManager.setFloatingWordHighFpsEnabled(context, it)
-                            }
-                        )
-                    }
                 }
             }
 

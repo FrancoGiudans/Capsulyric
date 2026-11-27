@@ -28,7 +28,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.display.AlbumArtColorExtractor
@@ -40,10 +39,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 internal fun FloatingLyricsSettingsPreview(
     style: FloatingLyricsStyle,
     display: FloatingLyricsDisplayConfig,
+    wordAnimationHighFps: Boolean,
     useMiuix: Boolean
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val frame = rememberLiveFloatingLyricsFrame(display.wordHighlight)
+    val frame = rememberLiveFloatingLyricsFrame(display.wordHighlight, wordAnimationHighFps)
     val context = LocalContext.current
     val previewLabel = stringResource(R.string.settings_floating_preview)
     val toggleLabel = stringResource(
@@ -109,7 +109,7 @@ internal fun FloatingLyricsSettingsPreview(
 }
 
 @Composable
-private fun rememberLiveFloatingLyricsFrame(wordHighlight: Boolean): UIState {
+private fun rememberLiveFloatingLyricsFrame(wordHighlight: Boolean, highFps: Boolean): UIState {
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
     val lyric by repo.liveLyric.observeAsState()
@@ -133,7 +133,6 @@ private fun rememberLiveFloatingLyricsFrame(wordHighlight: Boolean): UIState {
     val liveLine = remember(parsed, lyric) { floatingLiveLine(parsed, lyric) }
     val clock = session.clock
     val samplePosition = progress?.position.takeIf { clock == null }
-    val highFps = LabFeatureManager.isFloatingWordHighFpsEnabled(LocalContext.current)
     val frameIntervalMs = if (highFps) 16L else 33L
     val position by key(timeline, clock, samplePosition, frameIntervalMs, wordHighlight, liveLine.takeIf { timeline == null }) {
         produceState(clock?.positionAt(SystemClock.elapsedRealtime()) ?: samplePosition) {

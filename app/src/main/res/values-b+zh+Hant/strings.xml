@@ -1005,10 +1005,6 @@
     <string name="settings_navigation_bar_style_normal">普通樣式</string>
     <string name="settings_navigation_bar_style_floating">懸浮底欄</string>
     <string name="settings_navigation_bar_style_liquid">液態懸浮欄</string>
-    <string name="diag_lab_floating_lyrics_title">桌面懸浮歌詞入口</string>
-    <string name="diag_lab_floating_lyrics_desc">啟用桌面歌詞懸浮窗。</string>
-    <string name="diag_lab_floating_word_high_fps_title">逐字歌詞高影格率動畫</string>
-    <string name="diag_lab_floating_word_high_fps_desc">以 60/120 fps 渲染逐字平滑滾動效果（可能稍微增加耗電）</string>
     <string name="diag_lab_feed_source_title">社群動態來源</string>
     <string name="diag_lab_feed_source_desc">切換社群動態資料的取得線路</string>
     <string name="diag_lab_feed_source_github">GitHub (全球)</string>
@@ -1334,6 +1330,8 @@
     <string name="settings_floating_split_neighbor_alignment_desc">顯示下一句時，兩句歌詞使用相同字級並左右交替高亮</string>
     <string name="settings_floating_word_highlight">逐字卡拉OK高亮</string>
     <string name="settings_floating_word_highlight_desc">依音節精確高亮當前唱到的字詞</string>
+    <string name="settings_floating_word_animation_fps">逐字動畫影格率</string>
+    <string name="settings_floating_word_animation_fps_desc">设置桌面歌词的刷新率，帧率越高越耗電。</string>
     <string name="settings_floating_follow_album_color">歌詞文字跟隨封面色彩</string>
     <string name="settings_floating_follow_album_color_desc">從專輯封面取色，依背景調整文字對比度</string>
     <string name="settings_floating_text_color">歌詞文字色彩</string>

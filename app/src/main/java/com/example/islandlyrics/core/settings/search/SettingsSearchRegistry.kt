@@ -945,6 +945,17 @@ object SettingsSearchRegistry {
             )
         ),
         SettingsSearchItem(
+            id = "pref_desktop_lyrics_word_animation_fps",
+            titleRes = R.string.settings_floating_word_animation_fps,
+            summaryRes = R.string.settings_floating_word_animation_fps_desc,
+            breadcrumbResList = listOf(R.string.settings_display_appearance_header, R.string.settings_floating_lyrics),
+            keywords = listOf("逐字动画帧率", "高帧率", "帧率", "60fps", "30fps", "fps"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.DESKTOP_LYRICS,
+                targetItemKey = "key_floating_word_animation_fps"
+            )
+        ),
+        SettingsSearchItem(
             id = "pref_desktop_lyrics_follow_album_color",
             titleRes = R.string.settings_floating_follow_album_color,
             summaryRes = R.string.settings_floating_follow_album_color_desc,

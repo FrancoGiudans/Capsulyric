@@ -1005,10 +1005,6 @@
     <string name="settings_navigation_bar_style_normal">標準スタイル</string>
     <string name="settings_navigation_bar_style_floating">フローティングボトムバー</string>
     <string name="settings_navigation_bar_style_liquid">リキッドフローティングバー</string>
-    <string name="diag_lab_floating_lyrics_title">デスクトップフローティング歌詞エントリ</string>
-    <string name="diag_lab_floating_lyrics_desc">デスクトップ歌詞のフローティングウィンドウを有効にします。</string>
-    <string name="diag_lab_floating_word_high_fps_title">文字単位歌詞の高フレームレートアニメーション</string>
-    <string name="diag_lab_floating_word_high_fps_desc">60/120fpsでスムーズな文字単位スクロールを描画 (消費電力が増加する場合があります)</string>
     <string name="diag_lab_feed_source_title">コミュニティフィードソース</string>
     <string name="diag_lab_feed_source_desc">コミュニティフィードの取得元サーバーを切り替え</string>
     <string name="diag_lab_feed_source_github">GitHub (グローバル)</string>
@@ -1334,6 +1330,8 @@
     <string name="settings_floating_split_neighbor_alignment_desc">次の歌詞を表示する場合、同じ文字サイズで左右交互に強調します</string>
     <string name="settings_floating_word_highlight">カラオケ風ハイライト</string>
     <string name="settings_floating_word_highlight_desc">発音に合わせて文字単位でハイライト</string>
+    <string name="settings_floating_word_animation_fps">文字単位アニメーションのフレームレート</string>
+    <string name="settings_floating_word_animation_fps_desc">60 FPS では文字単位のハイライトが滑らかになり、消費電力が増えます。</string>
     <string name="settings_floating_follow_album_color">歌詞文字色をカバーに追従</string>
     <string name="settings_floating_follow_album_color_desc">アルバムアートから色を抽出し、背景に合わせて文字のコントラストを調整します</string>
     <string name="settings_floating_text_color">歌詞の文字色</string>
