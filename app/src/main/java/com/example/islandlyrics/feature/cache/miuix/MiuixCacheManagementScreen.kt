@@ -22,9 +22,15 @@
 
 package com.example.islandlyrics.feature.cache.miuix
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -38,6 +44,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,12 +55,20 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -67,6 +83,8 @@ import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import android.content.Intent
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
+import com.example.islandlyrics.feature.cache.LyricCacheFilter
+import com.example.islandlyrics.feature.cache.filterByCacheCategory
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
@@ -132,11 +150,15 @@ fun MiuixCacheManagementScreen(
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
+    var activeFilter by rememberSaveable { mutableStateOf<LyricCacheFilter?>(null) }
     var pendingDeleteEntryId by remember { mutableStateOf<String?>(null) }
     var showDeleteSelectedDialog by remember { mutableStateOf(false) }
     var showClearAppDataDialog by remember { mutableStateOf(false) }
-    val filteredLyricEntries = remember(lyricEntries, searchQuery) {
-        lyricEntries.filterByCacheQuery(searchQuery)
+    LaunchedEffect(lyricEntries.isEmpty()) {
+        if (lyricEntries.isEmpty()) activeFilter = null
+    }
+    val filteredLyricEntries = remember(lyricEntries, activeFilter, searchQuery) {
+        lyricEntries.filterByCacheCategory(activeFilter).filterByCacheQuery(searchQuery)
     }
     val pendingDeleteEntry = remember(lyricEntries, pendingDeleteEntryId) {
         lyricEntries.firstOrNull { it.id == pendingDeleteEntryId }
@@ -239,20 +261,33 @@ fun MiuixCacheManagementScreen(
             item { SmallTitle(text = stringResource(R.string.cache_management_lyric_cache)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        MiuixStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
-                        MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(lyricStats.totalBytes))
-                        MiuixStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), lyricStats.lastUpdatedAt))
-                        SuperSwitch(
-                            title = stringResource(R.string.cache_management_export_match_info_title),
-                            summary = stringResource(R.string.cache_management_export_match_info_desc),
-                            checked = exportMatchInfoEnabled,
-                            onCheckedChange = { enabled ->
-                                exportMatchInfoEnabled = enabled
-                                dirManager.setExportMatchSyncEnabled(enabled)
+                    MiuixLyricCacheOverview(
+                        stats = lyricStats,
+                        activeFilter = activeFilter,
+                        onFilterToggle = { tapped ->
+                            if (lyricStats.entryCount > 0 || activeFilter != null) {
+                                activeFilter = if (activeFilter == tapped) null else tapped
                             }
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        },
+                        onClearFilter = { activeFilter = null }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 2.dp)
+                            .height(0.5.dp)
+                            .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    )
+                    SuperSwitch(
+                        title = stringResource(R.string.cache_management_export_match_info_title),
+                        summary = stringResource(R.string.cache_management_export_match_info_desc),
+                        checked = exportMatchInfoEnabled,
+                        onCheckedChange = { enabled ->
+                            exportMatchInfoEnabled = enabled
+                            dirManager.setExportMatchSyncEnabled(enabled)
+                        }
+                    )
+                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)) {
                         Button(onClick = { viewModel.clearLyricCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.cache_management_clear_lyric_cache))
                         }
@@ -745,6 +780,430 @@ private fun formatSidecarFlags(hasTranslation: Boolean, hasRomanization: Boolean
 private fun formatTimestamp(emptyValue: String, timestamp: Long?): String {
     if (timestamp == null || timestamp <= 0L) return emptyValue
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+}
+
+private fun formatCompactTimestamp(emptyValue: String, timestamp: Long?): String {
+    if (timestamp == null || timestamp <= 0L) return emptyValue
+    return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
+}
+
+private fun formatPercentText(count: Int, total: Int): String {
+    if (total <= 0 || count <= 0) return "0%"
+    val pct = ((count * 100f) / total).toInt()
+    return if (pct == 0) "<1%" else "$pct%"
+}
+
+@Composable
+private fun MiuixLyricCacheOverview(
+    stats: OnlineLyricCacheStore.LyricCacheStats,
+    activeFilter: LyricCacheFilter?,
+    onFilterToggle: (LyricCacheFilter) -> Unit,
+    onClearFilter: () -> Unit
+) {
+    val colors = MiuixTheme.colorScheme
+    val isLight = colors.surface.luminance() > 0.5f
+    val lineAccent = remember(colors.primary, colors.onSurfaceVariantSummary) {
+        lerp(colors.primary, colors.onSurfaceVariantSummary, 0.38f)
+    }
+    val cellBg = remember(colors.onSurface, isLight) {
+        colors.onSurface.copy(alpha = if (isLight) 0.04f else 0.06f)
+    }
+    val selectedBg = remember(colors.primary, isLight) {
+        colors.primary.copy(alpha = if (isLight) 0.12f else 0.22f)
+    }
+    val selectedBorder = remember(colors.primary, isLight) {
+        colors.primary.copy(alpha = if (isLight) 0.28f else 0.40f)
+    }
+    val trackBg = remember(colors.onSurface, isLight) {
+        colors.onSurface.copy(alpha = if (isLight) 0.08f else 0.12f)
+    }
+
+    val syllableLabel = stringResource(R.string.cache_management_type_syllable)
+    val lineLabel = stringResource(R.string.cache_management_type_line)
+    val instLabel = stringResource(R.string.cache_management_type_instrumental)
+    val matchLabel = stringResource(R.string.cache_management_type_match_only)
+    val transLabel = stringResource(R.string.cache_management_sidecar_translation)
+    val romaLabel = stringResource(R.string.cache_management_sidecar_romanization)
+
+    val focusedInfo: Pair<Int, String>? = when (activeFilter) {
+        LyricCacheFilter.SYLLABLE -> stats.syllableCount to syllableLabel
+        LyricCacheFilter.LINE -> stats.lineCount to lineLabel
+        LyricCacheFilter.INSTRUMENTAL -> stats.instrumentalCount to instLabel
+        LyricCacheFilter.MATCH_ONLY -> stats.matchOnlyCount to matchLabel
+        LyricCacheFilter.TRANSLATION -> stats.translationCount to transLabel
+        LyricCacheFilter.ROMANIZATION -> stats.romanizationCount to romaLabel
+        null -> null
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+                    .then(if (focusedInfo != null) Modifier.clickable(onClick = onClearFilter) else Modifier)
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = (focusedInfo?.first ?: stats.entryCount).toString(),
+                        style = MiuixTheme.textStyles.title2.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFeatureSettings = "tnum"
+                        ),
+                        color = if (focusedInfo != null) colors.primary else colors.onSurface,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (focusedInfo != null) {
+                            stringResource(R.string.cache_management_filtered_unit_fmt, focusedInfo.second)
+                        } else {
+                            stringResource(R.string.cache_management_total_unit)
+                        },
+                        style = MiuixTheme.textStyles.body2.copy(fontWeight = FontWeight.Medium),
+                        color = if (focusedInfo != null) colors.primary else colors.onSurfaceVariantSummary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (focusedInfo != null) {
+                        stringResource(R.string.cache_management_filter_active_hint)
+                    } else {
+                        stringResource(
+                            R.string.cache_management_last_updated_fmt,
+                            formatCompactTimestamp(stringResource(R.string.cache_management_none), stats.lastUpdatedAt)
+                        )
+                    },
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = if (focusedInfo != null) colors.primary else colors.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(cellBg)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = formatBytes(stats.totalBytes),
+                    style = MiuixTheme.textStyles.footnote1.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = colors.onSurfaceSecondary,
+                    maxLines = 1
+                )
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MiuixBentoCapsuleCell(
+                    label = syllableLabel,
+                    count = stats.syllableCount,
+                    total = stats.entryCount,
+                    accent = colors.primary,
+                    cellBg = cellBg,
+                    selectedBg = selectedBg,
+                    selectedBorder = selectedBorder,
+                    trackBg = trackBg,
+                    selected = activeFilter == LyricCacheFilter.SYLLABLE,
+                    onClick = { onFilterToggle(LyricCacheFilter.SYLLABLE) },
+                    modifier = Modifier.weight(1f)
+                )
+                MiuixBentoCapsuleCell(
+                    label = lineLabel,
+                    count = stats.lineCount,
+                    total = stats.entryCount,
+                    accent = lineAccent,
+                    cellBg = cellBg,
+                    selectedBg = selectedBg,
+                    selectedBorder = selectedBorder,
+                    trackBg = trackBg,
+                    selected = activeFilter == LyricCacheFilter.LINE,
+                    onClick = { onFilterToggle(LyricCacheFilter.LINE) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MiuixBentoCapsuleCell(
+                    label = instLabel,
+                    count = stats.instrumentalCount,
+                    total = stats.entryCount,
+                    accent = colors.onSurfaceVariantSummary,
+                    cellBg = cellBg,
+                    selectedBg = selectedBg,
+                    selectedBorder = selectedBorder,
+                    trackBg = trackBg,
+                    selected = activeFilter == LyricCacheFilter.INSTRUMENTAL,
+                    onClick = { onFilterToggle(LyricCacheFilter.INSTRUMENTAL) },
+                    modifier = Modifier.weight(1f)
+                )
+                MiuixBentoCapsuleCell(
+                    label = matchLabel,
+                    count = stats.matchOnlyCount,
+                    total = stats.entryCount,
+                    accent = colors.onSurfaceSecondary,
+                    cellBg = cellBg,
+                    selectedBg = selectedBg,
+                    selectedBorder = selectedBorder,
+                    trackBg = trackBg,
+                    selected = activeFilter == LyricCacheFilter.MATCH_ONLY,
+                    onClick = { onFilterToggle(LyricCacheFilter.MATCH_ONLY) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MiuixSidecarTrackRow(
+                badge = stringResource(R.string.cache_management_sidecar_translation_badge),
+                label = transLabel,
+                count = stats.translationCount,
+                total = stats.entryCount,
+                cellBg = cellBg,
+                selectedBg = selectedBg,
+                selectedBorder = selectedBorder,
+                trackBg = trackBg,
+                selected = activeFilter == LyricCacheFilter.TRANSLATION,
+                onClick = { onFilterToggle(LyricCacheFilter.TRANSLATION) }
+            )
+            MiuixSidecarTrackRow(
+                badge = stringResource(R.string.cache_management_sidecar_romanization_badge),
+                label = romaLabel,
+                count = stats.romanizationCount,
+                total = stats.entryCount,
+                cellBg = cellBg,
+                selectedBg = selectedBg,
+                selectedBorder = selectedBorder,
+                trackBg = trackBg,
+                selected = activeFilter == LyricCacheFilter.ROMANIZATION,
+                onClick = { onFilterToggle(LyricCacheFilter.ROMANIZATION) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixBentoCapsuleCell(
+    label: String,
+    count: Int,
+    total: Int,
+    accent: Color,
+    cellBg: Color,
+    selectedBg: Color,
+    selectedBorder: Color,
+    trackBg: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MiuixTheme.colorScheme
+    val shape = RoundedCornerShape(14.dp)
+    val targetFill = if (total > 0 && count > 0) {
+        (count.toFloat() / total.toFloat()).coerceIn(0.05f, 1f)
+    } else 0f
+    val animatedFill by animateFloatAsState(targetValue = targetFill, label = "miuixBentoFill")
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) selectedBg else cellBg,
+        label = "miuixBentoBg"
+    )
+    val labelColor = if (selected) colors.primary else colors.onSurfaceVariantSummary
+    val valueColor = when {
+        selected -> colors.primary
+        count == 0 -> colors.onSurfaceVariantSummary
+        else -> colors.onSurface
+    }
+    val barColor = if (selected) colors.primary else accent
+
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(bgColor)
+            .then(
+                if (selected) Modifier.border(width = 1.dp, color = selectedBorder, shape = shape)
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MiuixTheme.textStyles.footnote1.copy(fontWeight = FontWeight.Medium),
+                color = labelColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = 4.dp)
+            )
+            Text(
+                text = formatPercentText(count, total),
+                style = MiuixTheme.textStyles.footnote1.copy(fontFeatureSettings = "tnum"),
+                color = labelColor,
+                maxLines = 1
+            )
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = count.toString(),
+            style = MiuixTheme.textStyles.title4.copy(
+                fontWeight = FontWeight.Bold,
+                fontFeatureSettings = "tnum"
+            ),
+            color = valueColor,
+            maxLines = 1
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .clip(CircleShape)
+                .background(trackBg)
+                .drawBehind {
+                    if (animatedFill > 0f) {
+                        drawRoundRect(
+                            color = barColor,
+                            size = size.copy(width = size.width * animatedFill),
+                            cornerRadius = CornerRadius(size.height / 2f)
+                        )
+                    }
+                }
+        )
+    }
+}
+
+@Composable
+private fun MiuixSidecarTrackRow(
+    badge: String,
+    label: String,
+    count: Int,
+    total: Int,
+    cellBg: Color,
+    selectedBg: Color,
+    selectedBorder: Color,
+    trackBg: Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = MiuixTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    val targetFill = if (total > 0 && count > 0) {
+        (count.toFloat() / total.toFloat()).coerceIn(0.04f, 1f)
+    } else 0f
+    val animatedFill by animateFloatAsState(targetValue = targetFill, label = "miuixSidecarFill")
+    val barColor = colors.primary
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) selectedBg else cellBg,
+        label = "miuixSidecarBg"
+    )
+    val mainTextColor = if (selected) colors.primary else colors.onSurface
+    val subTextColor = if (selected) colors.primary else colors.onSurfaceVariantSummary
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(bgColor)
+            .then(
+                if (selected) Modifier.border(width = 1.dp, color = selectedBorder, shape = shape)
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(colors.primary)
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = badge,
+                        style = MiuixTheme.textStyles.footnote1.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.onPrimary,
+                        maxLines = 1
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = label,
+                    style = MiuixTheme.textStyles.footnote1.copy(fontWeight = FontWeight.Medium),
+                    color = mainTextColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = count.toString(),
+                    style = MiuixTheme.textStyles.footnote1.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = mainTextColor,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = formatPercentText(count, total),
+                    style = MiuixTheme.textStyles.footnote1.copy(fontFeatureSettings = "tnum"),
+                    color = subTextColor,
+                    maxLines = 1
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .clip(CircleShape)
+                .background(trackBg)
+                .drawBehind {
+                    if (animatedFill > 0f) {
+                        drawRoundRect(
+                            color = barColor,
+                            size = size.copy(width = size.width * animatedFill),
+                            cornerRadius = CornerRadius(size.height / 2f)
+                        )
+                    }
+                }
+        )
+    }
 }
 
 

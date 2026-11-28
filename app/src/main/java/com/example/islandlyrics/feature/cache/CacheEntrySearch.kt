@@ -24,6 +24,31 @@ package com.example.islandlyrics.feature.cache
 
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 
+internal enum class LyricCacheFilter {
+    SYLLABLE,
+    LINE,
+    INSTRUMENTAL,
+    MATCH_ONLY,
+    TRANSLATION,
+    ROMANIZATION
+}
+
+internal fun List<OnlineLyricCacheStore.LyricCacheEntrySummary>.filterByCacheCategory(
+    filter: LyricCacheFilter?
+): List<OnlineLyricCacheStore.LyricCacheEntrySummary> {
+    if (filter == null) return this
+    return filter { entry ->
+        when (filter) {
+            LyricCacheFilter.SYLLABLE -> entry.hasCachedLyrics && entry.hasSyllable
+            LyricCacheFilter.LINE -> entry.hasCachedLyrics && !entry.hasSyllable
+            LyricCacheFilter.INSTRUMENTAL -> entry.isInstrumental
+            LyricCacheFilter.MATCH_ONLY -> !entry.isInstrumental && !entry.hasCachedLyrics
+            LyricCacheFilter.TRANSLATION -> entry.hasTranslation
+            LyricCacheFilter.ROMANIZATION -> entry.hasRomanization
+        }
+    }
+}
+
 internal fun List<OnlineLyricCacheStore.LyricCacheEntrySummary>.filterByCacheQuery(
     query: String
 ): List<OnlineLyricCacheStore.LyricCacheEntrySummary> {
