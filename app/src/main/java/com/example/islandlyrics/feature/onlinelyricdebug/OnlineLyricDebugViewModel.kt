@@ -279,20 +279,24 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         preferredMain: OnlineLyricFetcher.LyricResult?,
         role: ResultRole,
         targetTitle: String,
-        targetArtist: String
+        targetArtist: String,
+        targetAlbum: String = "",
+        targetDurationMs: Long = 0L
     ): OnlineLyricFetcher.LyricResult? {
         val kind = when (role) {
             ResultRole.TRANSLATION -> OnlineLyricSidecarMerger.SidecarKind.TRANSLATION
             ResultRole.ROMANIZATION -> OnlineLyricSidecarMerger.SidecarKind.ROMANIZATION
             ResultRole.MAIN -> return preferredMain
         }
-        // 与自检索路径共用同一套 sidecar 选择：只要求匹配当前播放信息
+        // 与自动抓取路径共用同一套严格 sidecar 身份校验（含专辑/时长/版本冲突防护）
         return OnlineLyricSidecarMerger.selectBestSidecarSource(
             attempts = attempts,
             preferredMain = preferredMain,
             kind = kind,
             targetTitle = targetTitle,
-            targetArtist = targetArtist
+            targetArtist = targetArtist,
+            targetAlbum = targetAlbum,
+            targetDurationMs = targetDurationMs
         )
     }
 
@@ -374,13 +378,20 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     ) {
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
             ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
-        val lines = OnlineLyricSidecarMerger.withSidecars(result, rule)
+        val processed = com.example.islandlyrics.lyrics.online.parser.OnlineLyricPresentationProcessor.prepare(
+            context = getApplication(),
+            result = result,
+            rule = rule,
+            mediaInfo = mediaInfo
+        )
+        val lines = processed.lines
         repo.updateParsedLyrics(
             lines = lines,
             hasSyllable = result.hasSyllable,
             sourceLabel = result.api,
             apiPath = apiPath,
-            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+            writers = processed.writers
         )
 
         val appLabel = ParserRuleHelper.getAppNameForPackage(getApplication(), mediaInfo.packageName)
@@ -820,14 +831,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     preferredMain = mainForSidecar,
                     role = ResultRole.TRANSLATION,
                     targetTitle = queryTitle,
-                    targetArtist = queryArtist
+                    targetArtist = queryArtist,
+                    targetAlbum = mediaInfo.album,
+                    targetDurationMs = mediaInfo.duration
                 )
                 val romanResult = selectBestSidecarResult(
                     attempts = outcome.attempts,
                     preferredMain = mainForSidecar,
                     role = ResultRole.ROMANIZATION,
                     targetTitle = queryTitle,
-                    targetArtist = queryArtist
+                    targetArtist = queryArtist,
+                    targetAlbum = mediaInfo.album,
+                    targetDurationMs = mediaInfo.duration
                 )
                 if (translationResult == null && romanResult == null) {
                     _error.value = s(R.string.online_lyric_debug_no_translation_candidates)
@@ -984,14 +999,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         preferredMain = outcome.bestResult,
                         role = ResultRole.TRANSLATION,
                         targetTitle = queryTitle,
-                        targetArtist = queryArtist
+                        targetArtist = queryArtist,
+                        targetAlbum = mediaInfo.album,
+                        targetDurationMs = mediaInfo.duration
                     )
                     val romanResult = selectBestSidecarResult(
                         attempts = outcome.attempts,
                         preferredMain = outcome.bestResult,
                         role = ResultRole.ROMANIZATION,
                         targetTitle = queryTitle,
-                        targetArtist = queryArtist
+                        targetArtist = queryArtist,
+                        targetAlbum = mediaInfo.album,
+                        targetDurationMs = mediaInfo.duration
                     )
                     persistAndApplySelection(
                         mediaInfo = mediaInfo,

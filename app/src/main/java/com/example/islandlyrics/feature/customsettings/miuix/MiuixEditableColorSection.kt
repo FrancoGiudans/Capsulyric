@@ -53,6 +53,7 @@ internal fun MiuixEditableColorSection(
     color: Color,
     isEditing: Boolean,
     defaultActionText: String,
+    modifier: Modifier = Modifier,
     onStartEditing: () -> Unit,
     onColorChanged: (Color) -> Unit,
     onApply: () -> Unit,
@@ -60,7 +61,7 @@ internal fun MiuixEditableColorSection(
     onUseDefault: () -> Unit
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {

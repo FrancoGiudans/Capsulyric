@@ -23,6 +23,7 @@
 package com.example.islandlyrics.lyrics.state
 
 import android.graphics.Bitmap
+import android.media.session.MediaSession
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
@@ -51,8 +52,12 @@ class LyricRepository private constructor() {
         val albumArtist: String = "",
         val mediaId: String = "",
         val mediaUri: String = "",
-        val trackNumber: Int = 0
+        val trackNumber: Int = 0,
+        internal val mediaSessionToken: MediaSession.Token? = null,
     ) {
+        internal fun withoutRawMetadata(): MediaInfo =
+            if (rawTitle == title && rawArtist == artist) this else copy(rawTitle = title, rawArtist = artist)
+
         internal val albumArtKey: AlbumArtKey
             get() = AlbumArtKey(packageName, title, artist, duration, mediaId, mediaUri)
     }
@@ -124,7 +129,8 @@ class LyricRepository private constructor() {
         val apiPath: String? = null,
         val timelineCapability: TimelineCapability = TimelineCapability.NONE,
         val receiveTranslation: Boolean = true,
-        val receiveRomanization: Boolean = true
+        val receiveRomanization: Boolean = true,
+        val writers: List<String> = emptyList()
     )
     val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
 
@@ -204,6 +210,33 @@ class LyricRepository private constructor() {
         }
     }
 
+    internal fun clearNotificationLyrics(packageName: String) {
+        if (liveMetadata.value?.packageName != packageName) return
+
+        val parsed = liveParsedLyrics.value
+        val hasNotificationTimeline = parsed?.apiPath == API_PATH_NOTIFICATION
+        if (hasNotificationTimeline) {
+            updateParsedLyrics(emptyList(), hasSyllable = false)
+            postOrSet(liveCurrentLine, null)
+        }
+        if (liveLyric.value?.apiPath != API_PATH_NOTIFICATION) return
+
+        updateLyric("", packageName, "System")
+        if (parsed != null && !hasNotificationTimeline) {
+            liveCurrentLine.value?.takeIf { it in parsed.lines }?.let { line ->
+                updateLyric(
+                    lyric = line.text,
+                    app = parsed.sourceLabel ?: packageName,
+                    apiPath = parsed.apiPath ?: "Online API",
+                    translation = line.translation,
+                    roma = line.roma,
+                    receiveTranslation = parsed.receiveTranslation,
+                    receiveRomanization = parsed.receiveRomanization,
+                )
+            }
+        }
+    }
+
     fun updateLyricResolveState(state: LyricResolveState) {
         if (liveLyricResolveState.value != state) {
             postOrSet(liveLyricResolveState, state)
@@ -235,7 +268,8 @@ class LyricRepository private constructor() {
         albumArtist: String = "",
         mediaId: String = "",
         mediaUri: String = "",
-        trackNumber: Int = 0
+        trackNumber: Int = 0,
+        mediaSessionToken: MediaSession.Token? = null,
     ): MediaInfo {
         val newInfo = MediaInfo(
             title = title,
@@ -248,7 +282,8 @@ class LyricRepository private constructor() {
             albumArtist = albumArtist,
             mediaId = mediaId,
             mediaUri = mediaUri,
-            trackNumber = trackNumber
+            trackNumber = trackNumber,
+            mediaSessionToken = mediaSessionToken,
         )
         if (liveMetadata.value == newInfo) return newInfo
 
@@ -297,9 +332,19 @@ class LyricRepository private constructor() {
         apiPath: String? = null,
         timelineCapability: TimelineCapability = TimelineCapability.NONE,
         receiveTranslation: Boolean = true,
-        receiveRomanization: Boolean = true
+        receiveRomanization: Boolean = true,
+        writers: List<String> = emptyList()
     ): Boolean {
-        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability, receiveTranslation, receiveRomanization)
+        val info = ParsedLyricsInfo(
+            lines = lines,
+            hasSyllable = hasSyllable,
+            sourceLabel = sourceLabel,
+            apiPath = apiPath,
+            timelineCapability = timelineCapability,
+            receiveTranslation = receiveTranslation,
+            receiveRomanization = receiveRomanization,
+            writers = writers
+        )
         val acceptedInfo = lyricSourceArbiter.chooseParsedLyrics(
             current = liveParsedLyrics.value,
             candidate = info
@@ -372,6 +417,7 @@ class LyricRepository private constructor() {
     companion object {
         const val ACTION_REFRESH_DIAGNOSTICS = "com.example.islandlyrics.ACTION_REFRESH_DIAGNOSTICS"
         const val API_PATH_INSTRUMENTAL = "Instrumental"
+        internal const val API_PATH_NOTIFICATION = "Notification"
         private var instance: LyricRepository? = null
 
         @Synchronized

@@ -391,9 +391,7 @@ class MediaMonitorService : NotificationListenerService() {
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {
                                 handler.post {
-                                    checkServiceState()
                                     updateMetadataIfPrimary(controller)
-                                    updateDiagnostics()
                                 }
                             }
                             
@@ -498,7 +496,12 @@ class MediaMonitorService : NotificationListenerService() {
             else -> FloatingLyricsPlayback.INACTIVE
         }
         val track = if (primary != null && floatingPlayback != FloatingLyricsPlayback.INACTIVE) {
-            primary.metadata?.let { metadata ->
+            val resolved = LyricRepository.getInstance().liveMetadata.value?.takeIf {
+                it.mediaSessionToken == primary.sessionToken
+            }
+            resolved?.let {
+                FloatingLyricsTrack(it.packageName, it.mediaId.trim(), it.mediaUri.trim(), it.title.trim(), it.artist.trim())
+            } ?: primary.metadata?.let { metadata ->
                 FloatingLyricsTrack(
                     player = primary.packageName,
                     mediaId = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID).orEmpty().trim(),
@@ -693,6 +696,7 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Load parser rule for this package
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
+        val useNotificationLyrics = rule?.usesCarProtocol == true
 
         // Try restoring state if this is the first update for this package after a service restart
         var isDynamicLyricMode = packageLyricMode[pkg] ?: false
@@ -700,6 +704,26 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
+            if (!useNotificationLyrics) {
+                // Standard MediaSession player (usesCarProtocol = false):
+                // Never treat song switches by the same artist (e.g. when duration is 0)
+                // as dynamic notification lyric lines! Only sanitize redundant title-artist
+                // concatenation when applicable.
+                isDynamicLyricMode = false
+                packageLyricMode.remove(pkg)
+                packageRealTitle.remove(pkg)
+                packageRealArtist.remove(pkg)
+
+                val titleResolution = ParserRuleHelper.resolveTitleMetadata(rawTitle ?: "", rawArtist, rule)
+                if (titleResolution.parsed) {
+                    finalTitle = titleResolution.title
+                    finalArtist = titleResolution.artist
+                }
+
+                packageLastTitle[pkg] = rawTitle
+                packageLastArtist[pkg] = rawArtist
+                packageLastDuration[pkg] = duration
+            } else {
 
             // --- Anti-False-Positive Heuristics ---
             val isInstrumental = rawTitle?.contains("Instrument", ignoreCase = true) == true ||
@@ -803,13 +827,15 @@ class MediaMonitorService : NotificationListenerService() {
                 finalLyric  = rawTitle
             } else {
                 // --- STRATEGY 3: Parse-based detection (fallback for other formats) ---
-                // Case A: Title contains "Artist - Title" (e.g. bluetooth media)
-                val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
-                if (titleParse.third) {
-                    finalTitle  = titleParse.first
-                    finalArtist = titleParse.second
-                } else {
-                    // Case B: Artist contains "Artist - Title" AND Title is lyrics
+                // Case A: Title contains "Artist - Title" / "Title - Artist" (e.g. bluetooth media)
+                // Guard against overwriting a valid player artist with song subtitles such as
+                // "夜に駆ける - From THE FIRST TAKE" (artist "YOASOBI").
+                val titleResolution = ParserRuleHelper.resolveTitleMetadata(rawTitle ?: "", rawArtist, rule)
+                if (titleResolution.parsed) {
+                    finalTitle  = titleResolution.title
+                    finalArtist = titleResolution.artist
+                } else if (useNotificationLyrics) {
+                    // Case B: Artist contains "Artist - Title" AND Title is lyrics (car/notification protocol only)
                     val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
                     if (artistParse.third) {
                         val suspectedTitle  = artistParse.first
@@ -842,6 +868,7 @@ class MediaMonitorService : NotificationListenerService() {
             packageLastArtist[pkg]   = rawArtist
             packageLastDuration[pkg] = duration
             packageLyricMode[pkg]    = isDynamicLyricMode
+            }
         }
 
         if (BuildConfig.DEBUG) {
@@ -851,7 +878,7 @@ class MediaMonitorService : NotificationListenerService() {
             )
         }
 
-        // Update PUBLIC Metadata (Main UI)
+        val previousTrack = repo.liveMetadata.value
         val track = repo.updateMediaMetadata(
             title = finalTitle ?: "Unknown",
             artist = finalArtist ?: "Unknown",
@@ -863,18 +890,24 @@ class MediaMonitorService : NotificationListenerService() {
             albumArtist = albumArtist,
             mediaId = mediaId,
             mediaUri = mediaUri,
-            trackNumber = trackNumber
+            trackNumber = trackNumber,
+            mediaSessionToken = controller.sessionToken,
         )
 
-        // Update Lyric if available
-        if (finalLyric != null) {
-            LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg), "Notification")
+        // The parser also recovers the song identity for players that use the title field for lyrics.
+        if (useNotificationLyrics) {
+            finalLyric?.let { repo.updateLyric(it, getAppName(pkg), LyricRepository.API_PATH_NOTIFICATION) }
+        } else {
+            repo.clearNotificationLyrics(pkg)
         }
 
         // Some players auto-advance by publishing new metadata before sending a fresh
         // playback-state callback. Re-evaluate now so a delayed stop from the previous
         // track cannot dismiss the new focus notification.
-        checkServiceState()
+        if (!LyricService.isAlive || previousTrack?.withoutRawMetadata() != track.withoutRawMetadata()) {
+            checkServiceState()
+            updateDiagnostics()
+        }
 
         // --- Save state for persistence ---
         saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
@@ -888,9 +921,15 @@ class MediaMonitorService : NotificationListenerService() {
     ) {
         val repo = LyricRepository.getInstance()
         val previous = repo.liveTrackAlbumArt.value
+        val published = previous?.bitmap?.takeIf { previous.trackKey == track.albumArtKey }
+        if (published != null && !published.isRecycled && artBitmap != null && !artBitmap.isRecycled &&
+            artBitmap.config != Bitmap.Config.HARDWARE && published.config == artBitmap.config &&
+            published.width == artBitmap.width && published.height == artBitmap.height &&
+            published.sameAs(artBitmap)
+        ) return
+
         val scaledArt = scaleDownBitmap(artBitmap)
         if (previous?.trackKey == track.albumArtKey) {
-            val published = previous.bitmap
             if (scaledArt == null || published === scaledArt) return
             // A MediaSession IPC can return a fresh bitmap object for unchanged artwork.
             if (published != null && !published.isRecycled && published.sameAs(scaledArt)) {

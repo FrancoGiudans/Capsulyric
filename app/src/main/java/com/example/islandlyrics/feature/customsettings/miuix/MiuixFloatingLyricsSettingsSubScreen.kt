@@ -26,16 +26,23 @@ import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixReorderableListItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
@@ -55,6 +62,7 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Close
@@ -66,7 +74,15 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
-fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: CoroutineScope) {
+fun MiuixFloatingLyricsSettingsSubScreen(
+    prefs: SharedPreferences,
+    scope: CoroutineScope,
+    settingModifier: @Composable (String) -> Modifier = { Modifier },
+    twoPanePreview: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(),
+    scrollBehavior: ScrollBehavior? = null,
+    footerContent: (@Composable () -> Unit)? = null,
+) {
     val context = LocalContext.current
 
     var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
@@ -143,31 +159,43 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    FloatingLyricsSettingsPreview(
-        style = FloatingLyricsStyle(
-            textSizeSp = textSizeSp,
-            textWeight = textWeight,
-            baseTextColor = customTextColor.toArgb(),
-            followAlbumColor = followAlbumColor,
-            showAlbumArt = showAlbumArt,
-            enableTextStroke = textStroke,
-            enableTextBackground = textBackground
-        ),
-        display = FloatingLyricsDisplayConfig(
-            secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
-            showSecondLine = showSecondLine,
-            neighborAlignment = neighborAlignment,
-            wordHighlight = wordHighlight
-        ),
-        wordAnimationHighFps = wordAnimationHighFps,
-        useMiuix = true
-    )
+    val previewContent: @Composable (Modifier) -> Unit = { previewModifier ->
+        Box(modifier = previewModifier, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().widthIn(max = 380.dp)) {
+                FloatingLyricsSettingsPreview(
+                    style = FloatingLyricsStyle(
+                        textSizeSp = textSizeSp,
+                        textWeight = textWeight,
+                        baseTextColor = customTextColor.toArgb(),
+                        followAlbumColor = followAlbumColor,
+                        showAlbumArt = showAlbumArt,
+                        enableTextStroke = textStroke,
+                        enableTextBackground = textBackground
+                    ),
+                    display = FloatingLyricsDisplayConfig(
+                        secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
+                        showSecondLine = showSecondLine,
+                        neighborAlignment = neighborAlignment,
+                        wordHighlight = wordHighlight
+                    ),
+                    wordAnimationHighFps = wordAnimationHighFps,
+                    useMiuix = true
+                )
+            }
+        }
+    }
 
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    val settingsCardContent: @Composable () -> Unit = {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (twoPanePreview) Modifier else Modifier.padding(horizontal = 12.dp))
+        ) {
         SuperSwitch(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             summary = stringResource(R.string.settings_floating_lyrics_enabled_desc),
             checked = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_enabled"),
             onCheckedChange = { enabled ->
                 if (enabled) enableLyrics() else LabFeatureManager.setFloatingLyricsEnabled(context, false)
             }
@@ -177,6 +205,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             summary = stringResource(R.string.settings_floating_lyrics_show_desc),
             checked = featureEnabled && !floatingSession.isHidden,
             enabled = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_show"),
             onCheckedChange = { visible ->
                 if (visible) showLyrics() else FloatingLyricsVisibility.hide(prefs)
             }
@@ -186,6 +215,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             items = FloatingLyricsRecovery.entries.map { stringResource(it.label) },
             selectedIndex = recovery.ordinal,
             title = stringResource(R.string.settings_floating_recovery),
+            modifier = settingModifier("key_floating_recovery"),
             onSelectedIndexChange = { index ->
                 prefs.edit { putString(FloatingLyricsVisibility.RECOVERY, FloatingLyricsRecovery.entries[index].value) }
             }
@@ -194,6 +224,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_keep_on_pause),
             summary = stringResource(R.string.settings_floating_keep_on_pause_desc),
             checked = keepOnPause,
+            modifier = settingModifier("key_floating_keep_on_pause"),
             onCheckedChange = { value ->
                 prefs.edit { putBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, value) }
             }
@@ -202,6 +233,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_show_album_art),
             summary = stringResource(R.string.settings_floating_show_album_art_desc),
             checked = showAlbumArt,
+            modifier = settingModifier("key_floating_show_album_art"),
             onCheckedChange = {
                 showAlbumArt = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
@@ -212,6 +244,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_text_stroke),
             summary = stringResource(R.string.settings_floating_text_stroke_desc),
             checked = textStroke,
+            modifier = settingModifier("key_floating_text_stroke"),
             onCheckedChange = {
                 textStroke = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
@@ -222,6 +255,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_text_background),
             summary = stringResource(R.string.settings_floating_text_background_desc),
             checked = textBackground,
+            modifier = settingModifier("key_floating_text_background"),
             onCheckedChange = {
                 textBackground = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
@@ -232,6 +266,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_show_second_line),
             summary = stringResource(R.string.settings_floating_show_second_line_desc),
             checked = showSecondLine,
+            modifier = settingModifier("key_floating_show_second_line"),
             onCheckedChange = {
                 showSecondLine = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
@@ -258,6 +293,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_word_highlight),
             summary = stringResource(R.string.settings_floating_word_highlight_desc),
             checked = wordHighlight,
+            modifier = settingModifier("key_floating_word_highlight"),
             onCheckedChange = {
                 wordHighlight = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
@@ -272,6 +308,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             selectedIndex = if (wordAnimationHighFps) 1 else 0,
             title = stringResource(R.string.settings_floating_word_animation_fps),
             summary = stringResource(R.string.settings_floating_word_animation_fps_desc),
+            modifier = settingModifier("key_floating_word_animation_fps"),
             onSelectedIndexChange = { index ->
                 LabFeatureManager.setFloatingWordHighFpsEnabled(context, index == 1)
             }
@@ -281,6 +318,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             title = stringResource(R.string.settings_floating_follow_album_color),
             summary = stringResource(R.string.settings_floating_follow_album_color_desc),
             checked = followAlbumColor,
+            modifier = settingModifier("key_floating_follow_album_color"),
             onCheckedChange = {
                 if (it && floatingTextColorEditing) {
                     customTextColor = floatingTextColorSnapshot
@@ -323,6 +361,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
 
         SuperArrow(
             title = stringResource(R.string.settings_floating_font_settings),
+            modifier = settingModifier("key_floating_font_settings"),
             onClick = { showFontSettings = true }
         )
 
@@ -339,6 +378,52 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = ButtonDefaults.textButtonColorsPrimary()
         )
+        }
+    }
+
+    if (twoPanePreview) {
+        val layoutDirection = LocalLayoutDirection.current
+        AdaptiveTwoPane(
+            startWeight = 0.40f,
+            spacing = 16.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection) + 12.dp,
+                    end = contentPadding.calculateEndPadding(layoutDirection) + 12.dp
+                ),
+            startPane = {
+                previewContent(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding(),
+                            bottom = contentPadding.calculateBottomPadding()
+                        )
+                )
+            },
+            endPane = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .let { if (scrollBehavior != null) it.miuixPageScroll(scrollBehavior) else it },
+                    contentPadding = PaddingValues(
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+                ) {
+                    item { settingsCardContent() }
+                    if (footerContent != null) {
+                        item { footerContent() }
+                    }
+                }
+            }
+        )
+    } else {
+        previewContent(Modifier.fillMaxWidth())
+        settingsCardContent()
+        footerContent?.invoke()
     }
 
     MiuixBlurBottomSheet(

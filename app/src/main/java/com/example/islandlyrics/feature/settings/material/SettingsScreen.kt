@@ -37,6 +37,7 @@ import com.example.islandlyrics.core.feed.CommunityFeedAction
 import com.example.islandlyrics.core.feed.CommunityFeedActionStyle
 import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
@@ -56,14 +57,18 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -82,6 +87,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -96,8 +102,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -110,6 +121,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.window.DialogProperties
@@ -128,7 +141,13 @@ import com.example.islandlyrics.core.settings.search.SettingsSearchHistoryStore
 import com.example.islandlyrics.core.settings.search.SettingsUiVariant
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
+import androidx.compose.foundation.background
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurRadius
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.material.blur.materialBlurPanel
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.example.islandlyrics.ui.material.search.materialSettingHighlight
 import androidx.core.net.toUri
@@ -160,9 +179,12 @@ internal fun SettingsScreen(
     onOpenLab: (() -> Unit)? = null,
     onNavigateAction: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     showBackButton: Boolean = true,
-    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
+    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    isMasterPane: Boolean = false,
+    selectedDetailTarget: SettingsNavigationTarget? = null,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
     val focusManager = LocalFocusManager.current
     val layoutDirection = LocalLayoutDirection.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
@@ -183,6 +205,7 @@ internal fun SettingsScreen(
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
     var mainSettingHighlightKey by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
 
     // Settings search state
     var settingsSearchQuery by remember { mutableStateOf("") }
@@ -191,7 +214,13 @@ internal fun SettingsScreen(
     LaunchedEffect(settingsSearchExpanded) {
         if (settingsSearchExpanded) {
             searchHistory = SettingsSearchHistoryStore.getHistory(context)
+            listState.scrollToItem(0)
         }
+    }
+    BackHandler(enabled = settingsSearchExpanded) {
+        settingsSearchExpanded = false
+        settingsSearchQuery = ""
+        focusManager.clearFocus()
     }
     val searchResults = remember(settingsSearchQuery, context) {
         if (settingsSearchQuery.isNotBlank()) {
@@ -218,8 +247,18 @@ internal fun SettingsScreen(
     }
 
     LaunchedEffect(mainSettingHighlightKey) {
-        if (mainSettingHighlightKey != null) {
-            kotlinx.coroutines.delay(120)
+        val key = mainSettingHighlightKey
+        if (key != null) {
+            val cardIndex = when (key) {
+                "key_filter_online_lyric_info_lines" -> 3
+                "key_recommend_media_app", "key_new_playing_app_alert" -> 5
+                "key_language", "key_hide_recents", "key_hide_launcher" -> 11
+                else -> null
+            }
+            if (cardIndex != null) {
+                listState.animateScrollToItem(cardIndex)
+            }
+            kotlinx.coroutines.delay(150)
             mainSettingBringIntoViewRequester.bringIntoView()
         }
     }
@@ -486,6 +525,12 @@ internal fun SettingsScreen(
         }
     }
 
+    fun checkNotificationPermission(): Boolean {
+        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+    }
+    var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
+    var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
+
     fun handleSearchAction(action: SettingsSearchAction) {
         when (action) {
             SettingsSearchAction.RequestPostNotificationPermission -> {
@@ -496,6 +541,7 @@ internal fun SettingsScreen(
                 if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
                     settingsSearchExpanded = false
                     settingsSearchQuery = ""
+                    focusManager.clearFocus()
                     mainSettingHighlightKey = action.targetItemKey
                 } else if (onNavigateAction != null) {
                     onNavigateAction(action)
@@ -525,13 +571,31 @@ internal fun SettingsScreen(
             }
             is SettingsSearchAction.TriggerDialog -> {
                 when (action.dialog) {
-                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> showPrivacyDialog = true
-                    MainSettingsDialogType.HIDE_LAUNCHER -> showHideLauncherDialog = true
+                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> {
+                        if (notificationGranted) {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        } else {
+                            showPrivacyDialog = true
+                        }
+                    }
+                    MainSettingsDialogType.HIDE_LAUNCHER -> {
+                        if (launcherHidden) {
+                            launcherHidden = false
+                            LauncherAliasManager.setAliasEnabled(context, true)
+                        } else {
+                            showHideLauncherDialog = true
+                        }
+                    }
                     MainSettingsDialogType.BACKUP_EXPORT -> showExportCategoryDialog = true
                     MainSettingsDialogType.BACKUP_IMPORT -> {
                         importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                     }
-                    MainSettingsDialogType.LANGUAGE_PICKER -> showLanguageDropdown = true
+                    MainSettingsDialogType.IMPORT_OTHER_APPS -> {
+                        if (canChooseImportSource) thirdPartyImporter.openSources()
+                    }
+                    MainSettingsDialogType.LANGUAGE_PICKER -> {
+                        mainSettingHighlightKey = "key_language"
+                    }
                 }
             }
             is SettingsSearchAction.LaunchIntent -> {
@@ -544,49 +608,6 @@ internal fun SettingsScreen(
         }
     }
 
-    var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
-    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
-    
-    // Dialog State
-    var showIconStyleDialog by remember { mutableStateOf(false) }
-    // Notification Action Style State
-    var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-    var showActionStyleDialog by remember { mutableStateOf(false) }
-
-    // Notification Click Action State
-    var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
-    var showNotificationClickDialog by remember { mutableStateOf(false) }
-
-    // Dismiss Delay State
-    var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
-    var showDismissDelayDialog by remember { mutableStateOf(false) }
-
-    // Check for HyperOS 3.0.300+ (MiPlay/Live Update extras are HyperOS-only)
-    val isHyperOsSupported = remember { RomUtils.isHyperOs() && RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-    val isHyperOs = remember { RomUtils.isHyperOs() }
-
-    // Logic for permissions status
-    fun checkNotificationPermission(): Boolean {
-        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-    }
-    var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
-
-    // ... (lifecycle observer) ...
-
-    // Force disable unsupported features if they were previously enabled
-    LaunchedEffect(isHyperOsSupported) {
-        if (!isHyperOsSupported) {
-            if (dynamicIconEnabled) {
-                dynamicIconEnabled = false
-                prefs.edit { putBoolean("dynamic_icon_enabled", false) }
-            }
-            if (actionStyle == "miplay") {
-                actionStyle = "disabled"
-                prefs.edit { putString("notification_actions_style", "disabled") }
-            }
-        }
-    }
-    
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -614,18 +635,86 @@ internal fun SettingsScreen(
             }
         },
         topBar = {
-            MaterialBlurTopAppBar(
-                title = { Text(stringResource(R.string.title_app_settings)) },
-                navigationIcon = if (showBackButton) {
-                    {
-                        IconButton(onClick = { (context as? Activity)?.finish() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Column(modifier = Modifier.fillMaxWidth()) {
+                MaterialBlurTopAppBar(
+                    title = { Text(stringResource(R.string.title_app_settings)) },
+                    navigationIcon = if (showBackButton) {
+                        {
+                            IconButton(onClick = { (context as? Activity)?.finish() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
                         }
-                    }
-                } else {
-                    {}
-                },
-            )
+                    } else {
+                        {}
+                    },
+                )
+                val hasStartRail = LocalAdaptiveHasStartRail.current
+                val searchCutoutInsets = WindowInsets.displayCutout.only(
+                    if (hasStartRail) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .materialBlurPanel(
+                            shape = RectangleShape,
+                            radius = maxOf(LocalMaterialBlurRadius.current, 28.dp),
+                            tint = Color.Transparent,
+                            backgroundColor = materialPageContainerColor(),
+                        )
+                        .then(if (isMasterPane) Modifier else Modifier.windowInsetsPadding(searchCutoutInsets)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextField(
+                        value = settingsSearchQuery,
+                        onValueChange = {
+                            settingsSearchQuery = it
+                            settingsSearchExpanded = true
+                        },
+                        modifier = Modifier
+                            .then(
+                                if (isMasterPane) Modifier.fillMaxWidth()
+                                else Modifier.widthIn(max = layoutInfo.maxReadableWidth).fillMaxWidth()
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .heightIn(min = 52.dp)
+                            .onFocusChanged { focusState ->
+                                if (focusState.isFocused) settingsSearchExpanded = true
+                            },
+                        singleLine = true,
+                        shape = RoundedCornerShape(28.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                        ),
+                        placeholder = { Text(stringResource(R.string.settings_search)) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Search, contentDescription = null)
+                        },
+                        trailingIcon = if (settingsSearchExpanded) {
+                            {
+                                IconButton(
+                                    onClick = {
+                                        settingsSearchQuery = ""
+                                        settingsSearchExpanded = false
+                                        focusManager.clearFocus()
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = stringResource(R.string.backup_dialog_cancel)
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        }
+                    )
+                }
+            }
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
@@ -638,67 +727,34 @@ internal fun SettingsScreen(
             else -> stringResource(R.string.lang_sys_default)
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+        var filterOnlineLyricInfoLines by remember { mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-        var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
         var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
+        val singlePaneHorizontalExtra = if (!isMasterPane && layoutInfo.widthDp > layoutInfo.maxReadableWidth) {
+            (layoutInfo.widthDp - layoutInfo.maxReadableWidth) / 2
+        } else {
+            0.dp
+        }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = paddingValues.calculateStartPadding(layoutDirection),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(layoutDirection),
-                bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
-            )
-        ) {
-            item {
-                TextField(
-                    value = settingsSearchQuery,
-                    onValueChange = {
-                        settingsSearchQuery = it
-                        settingsSearchExpanded = true
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .heightIn(min = 56.dp)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) settingsSearchExpanded = true
-                        },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                    ),
-                    placeholder = { Text(stringResource(R.string.settings_search)) },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Search, contentDescription = null)
-                    },
-                    trailingIcon = if (settingsSearchExpanded) {
-                        {
-                            IconButton(
-                                onClick = {
-                                    settingsSearchQuery = ""
-                                    settingsSearchExpanded = false
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Filled.Close,
-                                    contentDescription = stringResource(R.string.backup_dialog_cancel)
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    }
+            contentPadding = if (isMasterPane) {
+                PaddingValues(
+                    start = paddingValues.calculateStartPadding(layoutDirection),
+                    top = paddingValues.calculateTopPadding(),
+                    end = 4.dp,
+                    bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
+                )
+            } else {
+                paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraBottom = 24.dp + extraBottomPadding,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
                 )
             }
-
+        ) {
             if (settingsSearchExpanded) {
                 if (settingsSearchQuery.isBlank()) {
                     if (searchHistory.isNotEmpty()) {
@@ -724,12 +780,22 @@ internal fun SettingsScreen(
                                     Text(stringResource(R.string.settings_search_clear))
                                 }
                             }
-                            searchHistory.forEach { historyQuery ->
-                                AssistChip(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                                    onClick = { settingsSearchQuery = historyQuery },
-                                    label = { Text(historyQuery) }
-                                )
+                        }
+                        item {
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                searchHistory.forEach { historyQuery ->
+                                    AssistChip(
+                                        onClick = { settingsSearchQuery = historyQuery },
+                                        label = { Text(historyQuery) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -774,6 +840,8 @@ internal fun SettingsScreen(
                                         SettingsSearchHistoryStore.addHistory(context, settingsSearchQuery.trim())
                                         searchHistory = SettingsSearchHistoryStore.getHistory(context)
                                         settingsSearchExpanded = false
+                                        settingsSearchQuery = ""
+                                        focusManager.clearFocus()
                                         handleSearchAction(match.item.action)
                                     }
                                 )
@@ -785,39 +853,246 @@ internal fun SettingsScreen(
                     }
                 }
             } else {
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_core_header)) }
+            // ═══ 1. Display & Appearance ═══ (index 0, 1)
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_display_appearance_header)) }
             item {
                 SettingsCard {
                     SettingsActionItem(
                         title = stringResource(R.string.settings_capsule_notification),
                         icon = Icons.Filled.MusicNote,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.CAPSULE_NOTIFICATION,
                         onClick = onOpenCapsuleNotification
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.settings_floating_lyrics),
-                        icon = Icons.Filled.MusicNote,
+                        icon = Icons.Filled.Tune,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.DESKTOP_LYRICS,
                         onClick = {
                             onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.page_title_personalization),
+                        icon = Icons.Filled.Palette,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.APP_UI,
+                        onClick = onOpenCustomSettings
+                    )
+                }
+            }
+
+            // ═══ 2. Lyrics & Sources ═══ (index 2, 3)
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_lyrics_sources_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_local_lyrics_title),
+                        summary = stringResource(R.string.settings_local_lyrics_directories),
+                        icon = Icons.Filled.Folder,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES,
+                        onClick = onOpenLocalLyricDirectories
+                    )
+                    if (!offlineModeEnabled) {
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.online_lyric_rematch_title),
+                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                            icon = Icons.Filled.Refresh,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.ONLINE_LYRIC_REMATCH,
+                            onClick = {
+                                onOpenOnlineLyricRematch?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                            }
+                        )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.apple_music_settings_title),
+                            summary = stringResource(R.string.apple_music_settings_summary),
+                            icon = Icons.Filled.Link,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.APPLE_MUSIC,
+                            onClick = {
+                                onNavigateAction?.invoke(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                            }
+                        )
+                    }
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_filter_online_lyric_info_lines),
+                        subtitle = stringResource(R.string.settings_filter_online_lyric_info_lines_desc),
+                        checked = filterOnlineLyricInfoLines,
+                        modifier = mainSettingModifier("key_filter_online_lyric_info_lines"),
+                        onCheckedChange = {
+                            filterOnlineLyricInfoLines = it
+                            prefs.edit { putBoolean(AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES, it) }
+                        },
+                        icon = Icons.Filled.FilterAlt
+                    )
+                }
+            }
+
+            // ═══ 3. Players & Services ═══ (index 4, 5)
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_players_services_header)) }
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_recommend_media_app),
+                        subtitle = stringResource(R.string.settings_recommend_media_app_desc),
+                        checked = recommendMediaAppEnabled,
+                        modifier = mainSettingModifier("key_recommend_media_app"),
+                        onCheckedChange = {
+                            recommendMediaAppEnabled = it
+                            prefs.edit { putBoolean("recommend_media_app", it) }
+                        },
+                        icon = Icons.Filled.AutoAwesome
+                    )
+                    SettingsCardDivider()
+                    // Extension of the above: proactive notification when an
+                    // unconfigured app is detected playing.
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_new_playing_app_alert),
+                        subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
+                        checked = newPlayingAppAlertEnabled,
+                        modifier = mainSettingModifier("key_new_playing_app_alert"),
+                        onCheckedChange = {
+                            newPlayingAppAlertEnabled = it
+                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
+                            if (it) {
+                                MediaMonitorService.triggerRecheck()
+                            } else {
+                                NewPlayingAppNotifier.cancelAll(context)
+                            }
+                        },
+                        icon = Icons.Filled.NotificationsActive
+                    )
+                    if (!offlineModeEnabled) {
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.lastfm_title),
+                            summary = stringResource(R.string.lastfm_settings_summary),
+                            icon = Icons.Filled.Link,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LAST_FM,
+                            onClick = {
+                                onOpenLastFm?.invoke()
+                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                            }
+                        )
+                    }
+                }
+            }
+
+            // ═══ 4. Data & Backup ═══ (index 6, 7)
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_data_backup_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.title_cache_management),
+                        summary = stringResource(R.string.settings_cache_management_desc),
+                        icon = Icons.Filled.Storage,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.CACHE_MANAGEMENT,
+                        onClick = {
+                            onOpenCacheManagement?.invoke()
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        icon = Icons.Filled.Upload,
+                        onClick = {
+                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        icon = Icons.Filled.Download,
+                        onClick = {
+                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
+                        icon = Icons.Filled.Download,
+                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
+                    )
+                }
+            }
+
+            // ═══ 5. Permissions ═══ (index 8, 9)
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_permissions_header)) }
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.perm_read_notif),
+                        subtitle = stringResource(R.string.perm_read_notif_desc),
+                        checked = notificationGranted,
+                        enabled = true,
+                        onClick = {
+                            if (notificationGranted) {
+                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            } else {
+                                showPrivacyDialog = true
+                            }
+                        },
+                        onCheckedChange = {},
+                        icon = Icons.Filled.Notifications
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.perm_post_notif),
+                        subtitle = stringResource(R.string.perm_post_notif_desc),
+                        checked = postNotificationGranted,
+                        enabled = true,
+                        onClick = { requestPostNotificationPermission() },
+                        onCheckedChange = {},
+                        icon = Icons.Filled.NotificationsActive
+                    )
+                    if (showPostNotificationSettings && !postNotificationGranted) {
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.main_status_open_settings),
+                            icon = Icons.Filled.Settings,
+                            onClick = { openPostNotificationSettings() }
+                        )
+                    }
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_general_battery),
+                        summary = stringResource(R.string.summary_optimize_battery),
+                        icon = Icons.Filled.BatterySaver,
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = "package:${context.packageName}".toUri()
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                                } catch (_: Exception) {}
+                            }
                         }
                     )
                 }
             }
 
+            // ═══ 6. General ═══ (index 10, 11)
             item { SettingsSectionHeader(text = stringResource(R.string.settings_general_header)) }
             item {
                 SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.page_title_personalization),
-                        icon = Icons.Filled.Palette,
-                        onClick = onOpenCustomSettings
-                    )
-                    SettingsCardDivider()
                     Box(modifier = Modifier.fillMaxWidth()) {
                         SettingsTextItem(
                             title = stringResource(R.string.settings_language),
                             value = currentLangText,
-                            onClick = { showLanguageDropdown = true }
+                            modifier = mainSettingModifier("key_language"),
+                            onClick = { showLanguageDropdown = true },
+                            icon = Icons.Filled.Language
                         )
                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
                             MaterialBlurDropdownMenu(
@@ -846,35 +1121,6 @@ internal fun SettingsScreen(
                     }
                     SettingsCardDivider()
                     SettingsSwitchItem(
-                        title = stringResource(R.string.settings_recommend_media_app),
-                        subtitle = stringResource(R.string.settings_recommend_media_app_desc),
-                        checked = recommendMediaAppEnabled,
-                        modifier = mainSettingModifier("key_recommend_media_app"),
-                        onCheckedChange = {
-                            recommendMediaAppEnabled = it
-                            prefs.edit { putBoolean("recommend_media_app", it) }
-                        }
-                    )
-                    SettingsCardDivider()
-                    // Extension of the above: proactive notification when an
-                    // unconfigured app is detected playing.
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.settings_new_playing_app_alert),
-                        subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
-                        checked = newPlayingAppAlertEnabled,
-                        modifier = mainSettingModifier("key_new_playing_app_alert"),
-                        onCheckedChange = {
-                            newPlayingAppAlertEnabled = it
-                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
-                            if (it) {
-                                MediaMonitorService.triggerRecheck()
-                            } else {
-                                NewPlayingAppNotifier.cancelAll(context)
-                            }
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsSwitchItem(
                         title = stringResource(R.string.settings_hide_recents),
                         subtitle = stringResource(R.string.settings_hide_recents_desc),
                         checked = hideRecentsEnabled,
@@ -882,13 +1128,15 @@ internal fun SettingsScreen(
                         onCheckedChange = {
                             hideRecentsEnabled = it
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
-                        }
+                        },
+                        icon = Icons.Filled.VisibilityOff
                     )
                     SettingsCardDivider()
                     SettingsSwitchItem(
                         title = stringResource(R.string.settings_hide_launcher),
                         subtitle = stringResource(R.string.settings_hide_launcher_desc),
                         checked = launcherHidden,
+                        modifier = mainSettingModifier("key_hide_launcher"),
                         onCheckedChange = { newValue ->
                             if (newValue) {
                                 showHideLauncherDialog = true
@@ -896,147 +1144,21 @@ internal fun SettingsScreen(
                                 launcherHidden = false
                                 LauncherAliasManager.setAliasEnabled(context, true)
                             }
-                        }
-                    )
-                }
-            }
-
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_permissions_header)) }
-            item {
-                SettingsCard {
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.perm_read_notif),
-                        subtitle = stringResource(R.string.perm_read_notif_desc),
-                        checked = notificationGranted,
-                        enabled = true,
-                        onClick = {
-                            if (notificationGranted) {
-                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                            } else {
-                                showPrivacyDialog = true
-                            }
                         },
-                        onCheckedChange = {}
-                    )
-                    SettingsCardDivider()
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.perm_post_notif),
-                        subtitle = stringResource(R.string.perm_post_notif_desc),
-                        checked = postNotificationGranted,
-                        enabled = true,
-                        onClick = { requestPostNotificationPermission() },
-                        onCheckedChange = {}
-                    )
-                    if (showPostNotificationSettings && !postNotificationGranted) {
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.main_status_open_settings),
-                            icon = Icons.Filled.Settings,
-                            onClick = { openPostNotificationSettings() }
-                        )
-                    }
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_general_battery),
-                        icon = Icons.Filled.BatterySaver,
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            intent.data = "package:${context.packageName}".toUri()
-                            context.startActivity(intent)
-                        }
+                        icon = Icons.Filled.VisibilityOff
                     )
                 }
             }
 
-            // 歌词工具：本地歌词 + 歌词工具
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
-            item {
-                SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_local_lyrics_title),
-                        summary = stringResource(R.string.settings_local_lyrics_directories),
-                        icon = Icons.Filled.Folder,
-                        onClick = onOpenLocalLyricDirectories
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.title_cache_management),
-                        summary = stringResource(R.string.settings_cache_management_desc),
-                        icon = Icons.Filled.Storage,
-                        onClick = {
-                            onOpenCacheManagement?.invoke()
-                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
-                        }
-                    )
-                    if (!offlineModeEnabled) {
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.online_lyric_rematch_title),
-                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
-                            icon = Icons.Filled.Refresh,
-                            onClick = {
-                                onOpenOnlineLyricRematch?.invoke()
-                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
-                            }
-                        )
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.lastfm_title),
-                            summary = stringResource(R.string.lastfm_settings_summary),
-                            icon = Icons.Filled.Link,
-                            onClick = {
-                                onOpenLastFm?.invoke()
-                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
-                            }
-                        )
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.apple_music_settings_title),
-                            summary = stringResource(R.string.apple_music_settings_summary),
-                            icon = Icons.Filled.Link,
-                            onClick = {
-                                context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
-                            }
-                        )
-                    }
-                }
-            }
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_backup_header)) }
-            item {
-                SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_backup_export),
-                        summary = stringResource(R.string.settings_backup_export_desc),
-                        icon = Icons.Filled.Upload,
-                        onClick = {
-                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_backup_import),
-                        summary = stringResource(R.string.settings_backup_import_desc),
-                        icon = Icons.Filled.Download,
-                        onClick = {
-                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_import_other_apps),
-                        summary = stringResource(R.string.settings_import_other_apps_desc),
-                        icon = Icons.Filled.Download,
-                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
-                    )
-                }
-            }
-
+            // ═══ 7. Help & About ═══ (index 12, 13)
             item { SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header)) }
             item {
                 SettingsCard {
                     SettingsActionItem(
                         title = stringResource(R.string.faq_title),
+                        summary = stringResource(R.string.summary_faq),
                         icon = Icons.AutoMirrored.Filled.Help,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.FAQ,
                         onClick = {
                             onOpenFaq?.invoke()
                                 ?: context.startActivity(Intent(context, FAQActivity::class.java))
@@ -1047,6 +1169,7 @@ internal fun SettingsScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.settings_community_header),
                             icon = Icons.Filled.Info,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.COMMUNITY,
                             onClick = {
                                 onOpenCommunity?.invoke()
                             }
@@ -1055,7 +1178,9 @@ internal fun SettingsScreen(
                     }
                     SettingsActionItem(
                         title = stringResource(R.string.about_title),
+                        summary = stringResource(R.string.settings_about_capsulyric),
                         icon = Icons.Filled.Info,
+                        selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.ABOUT,
                         onClick = {
                             onOpenAbout?.invoke()
                                 ?: context.startActivity(Intent(context, AboutActivity::class.java))
@@ -1072,6 +1197,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
                             icon = Icons.Filled.BugReport,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.DIAGNOSTICS,
                             onClick = onShowDiagnostics
                         )
                         SettingsCardDivider()
@@ -1079,6 +1205,7 @@ internal fun SettingsScreen(
                             title = stringResource(R.string.title_lab),
                             summary = stringResource(R.string.diag_lab_page_desc),
                             icon = Icons.Filled.Science,
+                            selected = isMasterPane && selectedDetailTarget == SettingsNavigationTarget.LAB,
                             onClick = {
                                 onOpenLab?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))
@@ -1134,55 +1261,6 @@ internal fun SettingsScreen(
                         Text(stringResource(R.string.dialog_hide_launcher_btn_cancel))
                     }
                 }
-            )
-        }
-        if (showIconStyleDialog) {
-            IconStyleSelectionDialog(
-                currentStyle = iconStyle,
-                isHyperOs = isHyperOs,
-                onStyleSelected = { style ->
-                    iconStyle = style
-                    prefs.edit { putString("dynamic_icon_style", style) }
-                    showIconStyleDialog = false
-                },
-                onDismiss = { showIconStyleDialog = false }
-            )
-        }
-
-        if (showActionStyleDialog) {
-            NotificationActionsDialog(
-                currentStyle = actionStyle,
-                isHyperOsSupported = isHyperOsSupported,
-                onStyleSelected = { style ->
-                    actionStyle = style
-                    prefs.edit { putString("notification_actions_style", style) }
-                    showActionStyleDialog = false
-                },
-                onDismiss = { showActionStyleDialog = false }
-            )
-        }
-
-        if (showNotificationClickDialog) {
-            NotificationClickDialog(
-                currentStyle = notificationClickStyle,
-                onStyleSelected = { style ->
-                    notificationClickStyle = style
-                    prefs.edit { putString("notification_click_style", style) }
-                    showNotificationClickDialog = false
-                },
-                onDismiss = { showNotificationClickDialog = false }
-            )
-        }
-
-        if (showDismissDelayDialog) {
-            DismissDelaySelectionDialog(
-                currentDelay = dismissDelay,
-                onDelaySelected = { delay ->
-                    dismissDelay = delay
-                    prefs.edit { putLong("notification_dismiss_delay", delay) }
-                    showDismissDelayDialog = false
-                },
-                onDismiss = { showDismissDelayDialog = false }
             )
         }
 
@@ -1995,7 +2073,8 @@ fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null
 ) {
     ListItem(
         modifier = Modifier
@@ -2005,6 +2084,15 @@ fun SettingsSwitchItem(
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent
         ),
+        leadingContent = icon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         headlineContent = {
             Text(
                 text = title,
@@ -2042,11 +2130,20 @@ fun SettingsActionItem(
     title: String,
     icon: ImageVector,
     summary: String? = null,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
     onClick: () -> Unit
 ) {
     ListItem(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f))
+                } else {
+                    Modifier
+                }
+            )
             .clickable(onClick = onClick),
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent
@@ -2178,7 +2275,8 @@ fun SettingsTextItem(
     subtitle: String? = null,
     value: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null
 ) {
     ListItem(
         modifier = Modifier
@@ -2188,6 +2286,15 @@ fun SettingsTextItem(
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent
         ),
+        leadingContent = icon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         headlineContent = {
             Text(
                 text = title,

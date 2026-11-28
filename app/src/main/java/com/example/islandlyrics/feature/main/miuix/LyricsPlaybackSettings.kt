@@ -29,6 +29,8 @@ internal fun LyricsPlaybackSettings(
         LyricsPlaybackPreference.HideSystemBars to R.string.settings_fullscreen_playback_hide_system_bars,
         LyricsPlaybackPreference.AutoHideControls to R.string.settings_fullscreen_playback_auto_hide_controls,
         LyricsPlaybackPreference.AutoFollow to R.string.settings_fullscreen_playback_auto_follow,
+        LyricsPlaybackPreference.ShowWriters to R.string.settings_fullscreen_playback_show_writers,
+        LyricsPlaybackPreference.DuetAlignment to R.string.settings_fullscreen_playback_duet_alignment,
     )
     settings.forEach { (preference, label) ->
         SwitchPreference(
@@ -38,6 +40,10 @@ internal fun LyricsPlaybackSettings(
                     stringResource(R.string.settings_fullscreen_playback_auto_hide_controls_summary)
                 LyricsPlaybackPreference.AutoFollow ->
                     stringResource(R.string.settings_fullscreen_playback_auto_follow_summary)
+                LyricsPlaybackPreference.ShowWriters ->
+                    stringResource(R.string.settings_fullscreen_playback_show_writers_summary)
+                LyricsPlaybackPreference.DuetAlignment ->
+                    stringResource(R.string.settings_fullscreen_playback_duet_alignment_summary)
                 else -> null
             },
             checked = preference.observe(prefs),

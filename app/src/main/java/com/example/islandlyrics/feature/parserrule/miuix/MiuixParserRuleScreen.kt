@@ -39,6 +39,7 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,9 +52,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
@@ -63,6 +67,11 @@ import top.yukonga.miuix.kmp.icon.extended.Help
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.AdaptiveWidthItem
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -71,23 +80,35 @@ import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
+private const val TEMPLATE_DETAIL_KEY = "__TEMPLATE__"
+private const val NEW_RULE_DETAIL_PREFIX = "__NEW__|"
+
 private data class InlineParserRuleEditorState(
     val initialRule: ParserRule,
     val isNewRule: Boolean,
     val isTemplate: Boolean = false,
 )
 
+private fun encodeNewRuleDetailKey(packageName: String?, suggestedName: String?): String =
+    "$NEW_RULE_DETAIL_PREFIX${packageName.orEmpty()}|${suggestedName.orEmpty()}"
+
 @Composable
 fun MiuixParserRuleScreen(
     onBack: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
+    extraBottomPadding: Dp = 0.dp,
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     onOpenFaq: (() -> Unit)? = null,
     onOpenRuleEditor: ((packageName: String?, suggestedName: String?) -> Unit)? = null,
-    onOpenTemplateEditor: (() -> Unit)? = null
+    onOpenTemplateEditor: (() -> Unit)? = null,
+    selectedDetailKey: String? = null,
+    onSelectDetailKey: ((String?) -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val useMasterDetail = layoutInfo.useMasterDetail && onSelectDetailKey != null
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
@@ -156,6 +177,19 @@ fun MiuixParserRuleScreen(
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        if (useMasterDetail && onSelectDetailKey != null) {
+            val existingRule = if (!packageName.isNullOrBlank()) {
+                rules.firstOrNull { it.packageName == packageName }
+            } else {
+                null
+            }
+            if (existingRule != null) {
+                onSelectDetailKey(existingRule.packageName)
+            } else {
+                onSelectDetailKey(encodeNewRuleDetailKey(packageName, suggestedName))
+            }
+            return
+        }
         if (onOpenRuleEditor != null) {
             onOpenRuleEditor(packageName, suggestedName)
             return
@@ -180,6 +214,10 @@ fun MiuixParserRuleScreen(
     }
 
     fun openTemplateEditor() {
+        if (useMasterDetail && onSelectDetailKey != null) {
+            onSelectDetailKey(TEMPLATE_DETAIL_KEY)
+            return
+        }
         if (onOpenTemplateEditor != null) {
             onOpenTemplateEditor()
             return
@@ -201,135 +239,139 @@ fun MiuixParserRuleScreen(
         if (inlineEditorVisible) onBottomBarVisibilityChange(false)
     }
 
-    OverlaySheetHost(
-        visible = inlineEditorVisible && inlineEditorState != null,
-        onDismissRequest = ::closeRuleEditor,
-        useMiuixNavForDefault = true,
-        entryKey = inlineEditorState,
-        onExitComplete = { closedEditor ->
-            if (!inlineEditorVisible && inlineEditorState === closedEditor) {
-                inlineEditorState = null
-                onBottomBarVisibilityChange(true)
-            }
-        },
-        content = {
-            MiuixBlurScaffold(
-                topBar = {
-                    MiuixBlurTopAppBar(
-                        title = stringResource(R.string.parser_rule_title),
-                        largeTitle = stringResource(R.string.parser_rule_title),
-                        scrollBehavior = scrollBehavior,
-                        navigationIcon = if (showBackButton) {
-                            {
-                                IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Back,
-                                        contentDescription = "Back",
-                                        tint = MiuixTheme.colorScheme.onBackground
-                                    )
-                                }
-                            }
-                        } else {
-                            {}
-                        },
-                        actions = {
-                            IconButton(onClick = {
-                                onOpenFaq?.invoke()
-                                    ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                            }, modifier = Modifier.padding(end = 12.dp)) {
+    val listScaffoldContent: @Composable () -> Unit = {
+        MiuixBlurScaffold(
+            topBar = {
+                MiuixBlurTopAppBar(
+                    title = stringResource(R.string.parser_rule_title),
+                    largeTitle = stringResource(R.string.parser_rule_title),
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = if (showBackButton) {
+                        {
+                            IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                                 Icon(
-                                    imageVector = MiuixIcons.Help,
-                                    contentDescription = stringResource(R.string.faq_title),
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = "Back",
                                     tint = MiuixTheme.colorScheme.onBackground
                                 )
                             }
                         }
-                    )
-                },
-                bottomBar = bottomBar,
-                floatingActionButton = {
-                    // Recommendation Logic
-                    val recommendEnabled = remember {
-                        AppPreferences.of(context)
-                            .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
-                    }
-
-                    val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
-                    val currentPkg = metadata?.packageName
-
-                    val isKnownApp = remember(rules, currentPkg) {
-                        if (currentPkg == null) true
-                        else rules.any { it.packageName == currentPkg }
-                    }
-
-                    val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
-
-                    val appLabel = remember(currentPkg) {
-                        if (currentPkg != null) {
-                            try {
-                                val pm = context.packageManager
-                                val info = pm.getApplicationInfo(currentPkg, 0)
-                                pm.getApplicationLabel(info).toString()
-                            } catch (_: Exception) {
-                                null
-                            }
-                        } else null
-                    }
-
-                    FloatingActionButton(
-                        onClick = {
-                            if (showRecommendation) {
-                                openRuleEditor(packageName = currentPkg, suggestedName = appLabel)
-                            } else {
-                                openRuleEditor()
-                            }
-                        },
-                        modifier = Modifier.padding(bottom = 108.dp, end = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Filled.Add, contentDescription = null, tint = MiuixTheme.colorScheme.onPrimary)
-                            if (showRecommendation) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)),
-                                    color = MiuixTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(R.string.parser_add_rule),
-                                    color = MiuixTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                    } else {
+                        {}
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        }, modifier = Modifier.padding(end = 12.dp)) {
+                            Icon(
+                                imageVector = MiuixIcons.Help,
+                                contentDescription = stringResource(R.string.faq_title),
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
                         }
                     }
-                },
-                popupHost = { MiuixPopupHost() }
-            ) { padding ->
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .miuixPageScroll(scrollBehavior),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 12.dp,
-                        bottom = padding.calculateBottomPadding() + 136.dp
-                    )
+                )
+            },
+            bottomBar = bottomBar,
+            floatingActionButton = {
+                // Recommendation Logic
+                val recommendEnabled = remember {
+                    AppPreferences.of(context)
+                        .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
+                }
+
+                val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
+                val currentPkg = metadata?.packageName
+
+                val isKnownApp = remember(rules, currentPkg) {
+                    if (currentPkg == null) true
+                    else rules.any { it.packageName == currentPkg }
+                }
+
+                val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
+
+                val appLabel = remember(currentPkg) {
+                    if (currentPkg != null) {
+                        try {
+                            val pm = context.packageManager
+                            val info = pm.getApplicationInfo(currentPkg, 0)
+                            pm.getApplicationLabel(info).toString()
+                        } catch (_: Exception) {
+                            null
+                        }
+                    } else null
+                }
+
+                FloatingActionButton(
+                    onClick = {
+                        if (showRecommendation) {
+                            openRuleEditor(packageName = currentPkg, suggestedName = appLabel)
+                        } else {
+                            openRuleEditor()
+                        }
+                    },
+                    modifier = Modifier.padding(bottom = extraBottomPadding + 16.dp, end = 8.dp)
                 ) {
-                    item {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, tint = MiuixTheme.colorScheme.onPrimary)
+                        if (showRecommendation) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)),
+                                color = MiuixTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.parser_add_rule),
+                                color = MiuixTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            },
+            popupHost = { MiuixPopupHost() }
+        ) { padding ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = if (useMasterDetail) {
+                    PaddingValues(
+                        start = padding.calculateStartPadding(layoutDirection),
+                        top = padding.calculateTopPadding() + 12.dp,
+                        end = 4.dp,
+                        bottom = padding.calculateBottomPadding() + extraBottomPadding + 88.dp
+                    )
+                } else {
+                    padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraTop = 12.dp,
+                        extraBottom = extraBottomPadding + 88.dp
+                    )
+                }
+            ) {
+                item {
+                    val templateCard = @Composable {
                         MiuixParserRuleTemplateCard(
                             configured = hasTemplate,
+                            selected = useMasterDetail && selectedDetailKey == TEMPLATE_DETAIL_KEY,
                             onClick = ::openTemplateEditor
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
-                    if (rules.isEmpty()) {
-                        item {
+                    if (useMasterDetail) templateCard() else AdaptiveWidthItem { templateCard() }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                if (rules.isEmpty()) {
+                    item {
+                        val emptyCard = @Composable {
                             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                 BasicComponent(
                                     title = stringResource(R.string.parser_no_rules),
@@ -337,16 +379,23 @@ fun MiuixParserRuleScreen(
                                 )
                             }
                         }
-                    } else {
-                        item {
+                        if (useMasterDetail) emptyCard() else AdaptiveWidthItem { emptyCard() }
+                    }
+                } else {
+                    item {
+                        val titleItem = @Composable {
                             SmallTitle(text = stringResource(R.string.parser_rules_count, rules.size))
                         }
-                        item {
+                        if (useMasterDetail) titleItem() else AdaptiveWidthItem { titleItem() }
+                    }
+                    item {
+                        val rulesCard = @Composable {
                             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                 rules.forEach { rule ->
                                     MiuixParserRuleItem(
                                         rule = rule,
                                         offlineModeEnabled = offlineModeEnabled,
+                                        selected = useMasterDetail && selectedDetailKey == rule.packageName,
                                         onClick = {
                                             openRuleEditor(packageName = rule.packageName)
                                         },
@@ -367,9 +416,12 @@ fun MiuixParserRuleScreen(
                                 }
                             }
                         }
+                        if (useMasterDetail) rulesCard() else AdaptiveWidthItem { rulesCard() }
                     }
+                }
 
-                    item {
+                item {
+                    val footerCard = @Composable {
                         MiuixLookingForOtherSettings(
                             links = listOf(
                                 OtherSettingLink(
@@ -399,89 +451,229 @@ fun MiuixParserRuleScreen(
                             modifier = Modifier.padding(top = 12.dp)
                         )
                     }
-                }
-
-                // Dialogs must be inside Scaffold content for MiuixPopupHost
-                MiuixBlurDialog(
-                    title = stringResource(R.string.parser_delete),
-                    summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
-                    show = showDeleteDialog.value,
-                    onDismissRequest = { showDeleteDialog.value = false }
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(
-                            text = stringResource(R.string.dialog_btn_cancel),
-                            onClick = { showDeleteDialog.value = false },
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(
-                            text = stringResource(android.R.string.ok),
-                            onClick = {
-                                val updatedRules = rules.toMutableList()
-                                updatedRules.remove(deletingRule)
-                                ParserRuleHelper.saveRules(context, updatedRules)
-                                refreshRules()
-                                showDeleteDialog.value = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.textButtonColorsPrimary()
-                        )
-                    }
+                    if (useMasterDetail) footerCard() else AdaptiveWidthItem { footerCard() }
                 }
             }
-        },
-        sheetContent = {
-            val editorState = inlineEditorState
-            if (editorState != null) {
-                MiuixParserRuleEditorScreen(
-                    initialRule = editorState.initialRule,
-                    isNewRule = editorState.isNewRule,
-                    isTemplate = editorState.isTemplate,
-                    onBack = ::closeRuleEditor,
-                    onDelete = { rule ->
-                        if (editorState.isTemplate) {
-                            ParserRuleHelper.clearDefaultTemplate(context)
-                            refreshRules()
-                        } else {
-                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                            updatedRules.removeAll { it.packageName == rule.packageName }
+
+            // Dialogs must be inside Scaffold content for MiuixPopupHost
+            MiuixBlurDialog(
+                title = stringResource(R.string.parser_delete),
+                summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
+                show = showDeleteDialog.value,
+                onDismissRequest = { showDeleteDialog.value = false }
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton(
+                        text = stringResource(R.string.dialog_btn_cancel),
+                        onClick = { showDeleteDialog.value = false },
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(
+                        text = stringResource(android.R.string.ok),
+                        onClick = {
+                            val deleted = deletingRule
+                            val updatedRules = rules.toMutableList()
+                            updatedRules.remove(deleted)
                             ParserRuleHelper.saveRules(context, updatedRules)
                             refreshRules()
-                        }
-                        closeRuleEditor()
-                    },
-                    onSaved = { rule ->
-                        if (editorState.isTemplate) {
-                            ParserRuleHelper.saveDefaultTemplate(context, rule)
-                            refreshRules()
-                        } else {
-                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                            val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
-                            if (index >= 0) {
-                                updatedRules[index] = rule
-                            } else {
-                                updatedRules.add(rule)
+                            if (deleted != null && selectedDetailKey == deleted.packageName) {
+                                onSelectDetailKey?.invoke(null)
                             }
-                            updatedRules.sort()
-                            ParserRuleHelper.saveRules(context, updatedRules)
-                            refreshRules()
-                        }
-                        closeRuleEditor()
-                    },
-                    onOpenFaq = {
-                        closeRuleEditor()
-                        onOpenFaq?.invoke()
-                            ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                    }
-                )
+                            showDeleteDialog.value = false
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColorsPrimary()
+                    )
+                }
             }
         }
-    )
+    }
+
+    if (useMasterDetail) {
+        AdaptiveTwoPane(
+            startWeight = 0.38f,
+            dividerColor = MiuixTheme.colorScheme.dividerLine,
+            modifier = Modifier.fillMaxSize(),
+            startPane = { listScaffoldContent() },
+            endPane = {
+                CompositionLocalProvider(LocalAdaptiveHasStartRail provides true) {
+                    val detailKey = selectedDetailKey
+                    val detailEditorState = remember(detailKey, rules, hasTemplate) {
+                        when {
+                            detailKey == null -> null
+                            detailKey == TEMPLATE_DETAIL_KEY -> InlineParserRuleEditorState(
+                                initialRule = ParserRuleHelper.loadDefaultTemplate(context)
+                                    ?: ParserRuleHelper.createDefaultRule(context, ""),
+                                isNewRule = false,
+                                isTemplate = true
+                            )
+                            detailKey.startsWith(NEW_RULE_DETAIL_PREFIX) -> {
+                                val parts = detailKey.removePrefix(NEW_RULE_DETAIL_PREFIX).split('|', limit = 2)
+                                val pkg = parts.getOrNull(0).orEmpty()
+                                val name = parts.getOrNull(1).orEmpty().ifBlank { null }
+                                val existing = if (pkg.isNotBlank()) rules.firstOrNull { it.packageName == pkg } else null
+                                val initial = if (pkg.isNotBlank()) {
+                                    existing ?: ParserRuleHelper.createDefaultRule(context, pkg).copy(customName = name)
+                                } else {
+                                    ParserRuleHelper.createDefaultRule(context, "").copy(customName = name)
+                                }
+                                InlineParserRuleEditorState(
+                                    initialRule = initial,
+                                    isNewRule = pkg.isBlank() || existing == null,
+                                    isTemplate = false
+                                )
+                            }
+                            else -> rules.firstOrNull { it.packageName == detailKey }?.let { rule ->
+                                InlineParserRuleEditorState(
+                                    initialRule = rule,
+                                    isNewRule = false,
+                                    isTemplate = false
+                                )
+                            }
+                        }
+                    }
+                    if (detailEditorState != null) {
+                        key(detailKey) {
+                            MiuixParserRuleEditorScreen(
+                                initialRule = detailEditorState.initialRule,
+                                isNewRule = detailEditorState.isNewRule,
+                                isTemplate = detailEditorState.isTemplate,
+                                showBackButton = false,
+                                onBack = { onSelectDetailKey?.invoke(null) },
+                                onDelete = { rule ->
+                                    if (detailEditorState.isTemplate) {
+                                        ParserRuleHelper.clearDefaultTemplate(context)
+                                    } else {
+                                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                        updatedRules.removeAll { it.packageName == rule.packageName }
+                                        ParserRuleHelper.saveRules(context, updatedRules)
+                                    }
+                                    refreshRules()
+                                    onSelectDetailKey?.invoke(null)
+                                },
+                                onSaved = { rule ->
+                                    if (detailEditorState.isTemplate) {
+                                        ParserRuleHelper.saveDefaultTemplate(context, rule)
+                                        refreshRules()
+                                        onSelectDetailKey?.invoke(TEMPLATE_DETAIL_KEY)
+                                    } else {
+                                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                        val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                                        if (index >= 0) {
+                                            updatedRules[index] = rule
+                                        } else {
+                                            updatedRules.add(rule)
+                                        }
+                                        updatedRules.sort()
+                                        ParserRuleHelper.saveRules(context, updatedRules)
+                                        refreshRules()
+                                        onSelectDetailKey?.invoke(rule.packageName)
+                                    }
+                                },
+                                onOpenFaq = {
+                                    onOpenFaq?.invoke()
+                                        ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                }
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(modifier = Modifier.widthIn(max = 360.dp)) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.parser_rule_title),
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.parser_rule_subtitle),
+                                        fontSize = 13.sp,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    } else {
+        OverlaySheetHost(
+            visible = inlineEditorVisible && inlineEditorState != null,
+            onDismissRequest = ::closeRuleEditor,
+            useMiuixNavForDefault = true,
+            entryKey = inlineEditorState,
+            onExitComplete = { closedEditor ->
+                if (!inlineEditorVisible && inlineEditorState === closedEditor) {
+                    inlineEditorState = null
+                    onBottomBarVisibilityChange(true)
+                }
+            },
+            content = { listScaffoldContent() },
+            sheetContent = {
+                val editorState = inlineEditorState
+                if (editorState != null) {
+                    MiuixParserRuleEditorScreen(
+                        initialRule = editorState.initialRule,
+                        isNewRule = editorState.isNewRule,
+                        isTemplate = editorState.isTemplate,
+                        onBack = ::closeRuleEditor,
+                        onDelete = { rule ->
+                            if (editorState.isTemplate) {
+                                ParserRuleHelper.clearDefaultTemplate(context)
+                                refreshRules()
+                            } else {
+                                val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                updatedRules.removeAll { it.packageName == rule.packageName }
+                                ParserRuleHelper.saveRules(context, updatedRules)
+                                refreshRules()
+                            }
+                            closeRuleEditor()
+                        },
+                        onSaved = { rule ->
+                            if (editorState.isTemplate) {
+                                ParserRuleHelper.saveDefaultTemplate(context, rule)
+                                refreshRules()
+                            } else {
+                                val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                                val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                                if (index >= 0) {
+                                    updatedRules[index] = rule
+                                } else {
+                                    updatedRules.add(rule)
+                                }
+                                updatedRules.sort()
+                                ParserRuleHelper.saveRules(context, updatedRules)
+                                refreshRules()
+                            }
+                            closeRuleEditor()
+                        },
+                        onOpenFaq = {
+                            closeRuleEditor()
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        }
+                    )
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun MiuixParserRuleTemplateCard(
     configured: Boolean,
+    selected: Boolean = false,
     onClick: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -491,6 +683,11 @@ private fun MiuixParserRuleTemplateCard(
                 if (configured) R.string.parser_template_status_configured
                 else R.string.parser_template_status_not_configured
             ),
+            modifier = if (selected) {
+                Modifier.background(MiuixTheme.colorScheme.primary.copy(alpha = 0.12f))
+            } else {
+                Modifier
+            },
             onClick = onClick
         )
     }
@@ -503,12 +700,20 @@ fun MiuixParserRuleItem(
     offlineModeEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onToggle: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
+    selected: Boolean = false,
 ) {
     val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (selected) {
+                    Modifier.background(MiuixTheme.colorScheme.primary.copy(alpha = 0.12f))
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

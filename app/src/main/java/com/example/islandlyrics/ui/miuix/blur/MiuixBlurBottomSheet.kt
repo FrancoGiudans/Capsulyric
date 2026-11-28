@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.displayCutout
@@ -56,10 +57,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -223,6 +226,15 @@ fun MiuixBlurBottomSheet(
         colorScheme.onSurface
     }.copy(alpha = borderAlpha)
 
+    val windowInfo = LocalWindowInfo.current
+    val effectiveSheetMaxWidth = remember(sheetMaxWidth, windowInfo.containerDpSize.width) {
+        if (sheetMaxWidth == 420.dp && windowInfo.containerDpSize.width >= 600.dp) {
+            520.dp
+        } else {
+            sheetMaxWidth
+        }
+    }
+
     MiuixBlurBottomSheetContent(
         show = show,
         modifier = modifier,
@@ -231,7 +243,7 @@ fun MiuixBlurBottomSheet(
         endAction = endAction,
         enableWindowDim = enableWindowDim,
         cornerRadius = cornerRadius,
-        sheetMaxWidth = sheetMaxWidth,
+        sheetMaxWidth = effectiveSheetMaxWidth,
         onDismissRequest = onDismissRequest,
         onDismissFinished = onDismissFinished,
         outsideMargin = outsideMargin,
@@ -426,6 +438,15 @@ private fun MiuixBlurBottomSheetContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(
+                        if (defaultWindowInsetsPadding) {
+                            Modifier.windowInsetsPadding(
+                                WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                     // Key on `allowDismiss` so the gesture coroutine restarts with the latest closure
                     // when the consumer toggles it; otherwise the in-flight detector keeps the stale value.
                     .pointerInput(allowDismiss) {

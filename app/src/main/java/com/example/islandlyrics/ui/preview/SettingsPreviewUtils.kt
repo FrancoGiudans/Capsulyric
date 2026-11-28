@@ -128,7 +128,7 @@ fun CapsulePreview(
     }
     
     val pillHeight = 56.dp
-    val previewFrame = Modifier.fillMaxWidth().height(pillHeight + 16.dp).padding(horizontal = 32.dp)
+    val previewFrame = Modifier.fillMaxWidth().height(pillHeight + 16.dp).padding(horizontal = 24.dp)
     val previewAlbumColor = extractedColor?.toArgb() ?: Color.Black.toArgb()
     val pillColor = Color(
         OneUiCapsuleColorMode.resolveColor(
@@ -179,6 +179,7 @@ fun CapsulePreview(
         ) {
             Row(
                 modifier = Modifier
+                    .widthIn(max = 340.dp)
                     .fillMaxWidth()
                     .height(pillHeight)
                     .clip(CircleShape)
@@ -241,6 +242,7 @@ fun CapsulePreview(
         ) {
             Row(
                 modifier = Modifier
+                    .widthIn(max = 340.dp)
                     .fillMaxWidth()
                     .height(pillHeight)
                     .clip(CircleShape)
@@ -586,10 +588,14 @@ fun NotificationPreview(
     }
 
     if (superIslandEnabled) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             // Expanded notification preview
             Box(
             modifier = Modifier
+                .widthIn(max = 420.dp)
                 .fillMaxWidth()
                 .padding(8.dp)
                 .clip(RoundedCornerShape(28.dp))
@@ -1053,21 +1059,26 @@ fun NotificationPreview(
     } else {
         // Standard Android Notification Style Card (Legacy)
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF202124)) // Dark notification background
-                .then(
-                    if (showBorder) {
-                        Modifier.border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(24.dp))
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(20.dp)
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Column {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF202124)) // Dark notification background
+                    .then(
+                        if (showBorder) {
+                            Modifier.border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(24.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(20.dp)
+            ) {
+                Column {
                 // HEADER: [Icon] App Name • Source • now
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // App Icon Simulation
@@ -1166,6 +1177,7 @@ fun NotificationPreview(
                         }
                     }
                 }
+            }
             }
         }
     }

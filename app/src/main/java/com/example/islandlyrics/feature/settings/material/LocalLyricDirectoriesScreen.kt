@@ -45,6 +45,8 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
 import com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
@@ -52,7 +54,8 @@ import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 @Composable
 fun LocalLyricDirectoriesScreen(
     onBack: () -> Unit,
-    onOpenDirectory: ((Uri, String) -> Unit)? = null
+    onOpenDirectory: ((Uri, String) -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
 
@@ -61,36 +64,50 @@ fun LocalLyricDirectoriesScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.settings_local_lyrics_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = paddingValues.calculateBottomPadding() + 24.dp,
-            )
-        ) {
-            item {
-                LocalLyricDirectoriesSection(
-                    showHeader = false,
-                    onOpenDirectory = onOpenDirectory
-                        ?: { uri, name ->
-                            context.startActivity(
-                                Intent(context, LocalLyricDirectoryActivity::class.java).apply {
-                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, uri.toString())
-                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, name)
-                                }
-                            )
-                        }
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
                 )
+            ) {
+                item {
+                    LocalLyricDirectoriesSection(
+                        showHeader = false,
+                        onOpenDirectory = onOpenDirectory
+                            ?: { uri, name ->
+                                context.startActivity(
+                                    Intent(context, LocalLyricDirectoryActivity::class.java).apply {
+                                        putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, uri.toString())
+                                        putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, name)
+                                    }
+                                )
+                            }
+                    )
+                }
             }
         }
     }

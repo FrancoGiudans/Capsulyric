@@ -56,6 +56,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -80,6 +81,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -138,8 +140,10 @@ import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.main.belongsTo
 import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
 import com.example.islandlyrics.feature.main.selectHomePlaybackController
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricAlignment
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
@@ -267,20 +271,27 @@ private fun LyricsPlaybackContent(
     onOpenOnlineLyricRematch: () -> Unit,
 ) {
     val context = LocalContext.current
-    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val layoutInfo = LocalAppWindowLayout.current
+    val landscape = layoutInfo.isLandscape && layoutInfo.widthDp >= 560.dp
     val repo = remember { LyricRepository.getInstance() }
-    val track by repo.liveMetadata.observeAsState(start.track)
+    val reportedTrack = repo.liveMetadata.observeAsState(start.track)
+    val track by remember(reportedTrack) {
+        derivedStateOf(structuralEqualityPolicy()) { reportedTrack.value?.withoutRawMetadata() }
+    }
     val parsed by repo.liveParsedLyrics.observeAsState()
-    val lyric by repo.liveLyric.observeAsState()
-    val currentLine by repo.liveCurrentLine.observeAsState()
+    val lyricState = repo.liveLyric.observeAsState()
+    val currentLineState = repo.liveCurrentLine.observeAsState()
     val albumArt by repo.liveTrackAlbumArt.observeAsState()
     val repoProgress = repo.liveProgress.observeAsState()
     val resolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
     val primaryTokens = remember { FloatingLyricsVisibility.session.map { it.mediaSession }.distinctUntilChanged() }
     val primaryToken by primaryTokens.collectAsState(FloatingLyricsVisibility.session.value.mediaSession)
     val controllers = rememberWhitelistedMediaSessions()
-    val controller = remember(controllers, track, primaryToken) {
-        selectHomePlaybackController(controllers, track, primaryToken)
+    val controller by remember(controllers, reportedTrack, primaryToken) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val current = reportedTrack.value
+            selectHomePlaybackController(controllers, current, current?.mediaSessionToken ?: primaryToken)
+        }
     }
     var media by remember(controller) { mutableStateOf(controller?.metadata) }
     var playback by remember(controller) { mutableStateOf(controller?.playbackState) }
@@ -298,21 +309,38 @@ private fun LyricsPlaybackContent(
         onDispose { controller?.unregisterCallback(callback) }
     }
 
-    val matchedTrack = track.takeIf { media.belongsTo(it) }
-    val cover = remember(albumArt, media, track, matchedTrack) {
-        val published = albumArt?.takeIf { it.trackKey == track?.albumArtKey }?.bitmap
-        published?.takeUnless(Bitmap::isRecycled) ?: media.takeIf { matchedTrack != null }?.let {
-            (it.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: it.getBitmap(MediaMetadata.METADATA_KEY_ART)
-                ?: it.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON))?.takeUnless(Bitmap::isRecycled)
+    // A notification lyric can change the raw title before the repository sees the metadata.
+    val hasMatchingSession by remember(controller, reportedTrack) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val current = reportedTrack.value
+            controller != null && current != null &&
+                (current.mediaSessionToken?.let { it == controller?.sessionToken } ?: media.belongsTo(current))
         }
     }
-    val actions = if (matchedTrack != null) playback?.actions ?: 0L else 0L
-    val playing = playback?.state == PlaybackState.STATE_PLAYING
+    val cover by remember(albumArt, track, controller) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val published = albumArt?.takeIf { it.trackKey == track?.albumArtKey }?.bitmap
+            published?.takeUnless(Bitmap::isRecycled) ?: media.takeIf { it.belongsTo(reportedTrack.value) }?.let {
+                (it.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                    ?: it.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                    ?: it.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON))?.takeUnless(Bitmap::isRecycled)
+            }
+        }
+    }
+    val matchedPlayback = playback.takeIf { hasMatchingSession }
+    val actions = matchedPlayback?.actions ?: 0L
+    val playing = matchedPlayback?.state == PlaybackState.STATE_PLAYING
+    val sessionDuration by remember(controller, track?.duration, hasMatchingSession) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            if (hasMatchingSession && (track?.duration ?: 0L) <= 0L) {
+                media?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.coerceAtLeast(0L) ?: 0L
+            } else {
+                0L
+            }
+        }
+    }
     val duration = track?.duration?.takeIf { it > 0L }
-        ?: media?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.takeIf { matchedTrack != null && it > 0L }
-        ?: 0L
-    val matchedPlayback = playback.takeIf { matchedTrack != null }
+        ?: sessionDuration
     val sessionClock = remember(matchedPlayback) { matchedPlayback.toLyricsClock(null) }
     val hasTrack = track != null
     val clock = remember(sessionClock, matchedPlayback, hasTrack, repoProgress) {
@@ -321,20 +349,29 @@ private fun LyricsPlaybackContent(
         }
     }
     val liveLines = remember(parsed) { parsed.playbackLines() }
+    val liveWriters = remember(parsed) { parsed.playbackWriters() }
     val prefs = remember(context) { AppPreferences.of(context) }
     PlaybackSystemBars(LyricsPlaybackPreference.HideSystemBars.observe(prefs))
     val showTranslation = LyricsPlaybackPreference.Translation.observe(prefs)
     val showRomanization = LyricsPlaybackPreference.Romanization.observe(prefs)
+    val showWriters = LyricsPlaybackPreference.ShowWriters.observe(prefs)
+    val duetAlignment = LyricsPlaybackPreference.DuetAlignment.observe(prefs)
     val blurLyrics = LyricsPlaybackPreference.LyricBlur.observe(prefs)
     val typography = LyricsPlaybackTypography.observe(prefs)
-    val mainLyricStyle = MiuixTheme.textStyles.title2.copy(
-        fontSize = typography.size.sp,
-        fontWeight = FontWeight(typography.weight.weight),
-    )
-    val secondaryLyricStyle = MiuixTheme.textStyles.body2.copy(
-        fontSize = (typography.size * (14f / 24f)).coerceAtLeast(12f).sp,
-        fontWeight = FontWeight((typography.weight.weight - 200).coerceAtLeast(FontWeight.Normal.weight)),
-    )
+    val baseTitleStyle = MiuixTheme.textStyles.title2
+    val baseBodyStyle = MiuixTheme.textStyles.body2
+    val mainLyricStyle = remember(baseTitleStyle, typography) {
+        baseTitleStyle.copy(
+            fontSize = typography.size.sp,
+            fontWeight = FontWeight(typography.weight.weight),
+        )
+    }
+    val secondaryLyricStyle = remember(baseBodyStyle, typography) {
+        baseBodyStyle.copy(
+            fontSize = (typography.size * (14f / 24f)).coerceAtLeast(12f).sp,
+            fontWeight = FontWeight((typography.weight.weight - 200).coerceAtLeast(FontWeight.Normal.weight)),
+        )
+    }
     val tintProgress = LyricsPlaybackPreference.AlbumProgress.observe(prefs)
     val tintLyrics = LyricsPlaybackPreference.AlbumText.observe(prefs)
     val keepScreenOn = LyricsPlaybackPreference.KeepScreenOn.observe(prefs)
@@ -349,13 +386,28 @@ private fun LyricsPlaybackContent(
     var retainedLines by remember(start, trackIdentity) {
         mutableStateOf(start.lines.takeIf { start.matches(track) }.orEmpty())
     }
+    var retainedWriters by remember(start, trackIdentity) {
+        mutableStateOf(start.writers.takeIf { start.matches(track) }.orEmpty())
+    }
     val lines = when {
         track == null -> emptyList()
         liveLines.isNotEmpty() -> liveLines
         resolveState == LyricRepository.LyricResolveState.NOT_FOUND -> emptyList()
         else -> retainedLines
     }
-    SideEffect { retainedLines = lines }
+    val writers = when {
+        track == null -> emptyList()
+        liveLines.isNotEmpty() -> liveWriters
+        resolveState == LyricRepository.LyricResolveState.NOT_FOUND -> emptyList()
+        else -> retainedWriters
+    }
+    val writersText = remember(writers, showWriters) {
+        if (showWriters) formatPlaybackWriters(writers) else null
+    }
+    SideEffect {
+        retainedLines = lines
+        retainedWriters = writers
+    }
     val position = key(track?.packageName, track?.title, track?.artist) {
         rememberLyricsPlaybackPosition(clock, duration)
     }
@@ -398,8 +450,14 @@ private fun LyricsPlaybackContent(
         }
     }
     val seekController = controller?.takeIf { duration > 0L && actions and PlaybackState.ACTION_SEEK_TO != 0L }
+    fun canSeekInCurrentTrack(controller: MediaController): Boolean {
+        val current = repo.liveMetadata.value
+        return current != null && current.albumArtKey == track?.albumArtKey &&
+            (current.mediaSessionToken == null || current.mediaSessionToken == controller.sessionToken) &&
+            controller.metadata.belongsTo(current)
+    }
     val seek = if (seekController != null) { requested: Long ->
-        if (seekController.metadata.belongsTo(matchedTrack)) {
+        if (canSeekInCurrentTrack(seekController)) {
             val target = requested.coerceIn(0L, duration)
             if (runCatching { seekController.transportControls.seekTo(target) }.isSuccess) {
                 loopRange = null
@@ -415,7 +473,7 @@ private fun LyricsPlaybackContent(
         position = position,
         playing = playing,
         onSeek = { loopStart, initial ->
-            seekController != null && seekController.metadata.belongsTo(matchedTrack) && runCatching {
+            seekController != null && canSeekInCurrentTrack(seekController) && runCatching {
                 val transport = seekController.transportControls
                 transport.seekTo(loopStart)
                 if (initial && !playing &&
@@ -449,6 +507,8 @@ private fun LyricsPlaybackContent(
                 key(trackIdentity) {
                     LyricsPlaybackList(
                         lines = lines,
+                        writersText = writersText,
+                        duetAlignment = duetAlignment,
                         showTranslation = showTranslation,
                         showRomanization = showRomanization,
                         color = lyricColor,
@@ -478,10 +538,10 @@ private fun LyricsPlaybackContent(
             } else {
                 PlaybackLyricFallback(
                     hasTrack = hasTrack,
-                    currentLine = currentLine?.takeUnless { SecondaryTextResolver.isPlaceholder(it.text) } ?: parsed?.takeIf {
+                    currentLine = currentLineState.value?.takeUnless { SecondaryTextResolver.isPlaceholder(it.text) } ?: parsed?.takeIf {
                         it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
                     }?.lines?.firstOrNull(),
-                    lyric = lyric,
+                    lyric = lyricState.value,
                     resolveState = resolveState,
                     position = position,
                     lyricColor = lyricColor,
@@ -503,7 +563,7 @@ private fun LyricsPlaybackContent(
                 )
             }
             LyricsPlaybackControls(
-                controller = controller.takeIf { matchedTrack != null },
+                controller = controller.takeIf { hasMatchingSession },
                 position = position,
                 duration = duration,
                 pendingSeek = pendingSeek,
@@ -541,8 +601,10 @@ private fun LyricsPlaybackContent(
         modifier = if (keepScreenOn && playing) Modifier.keepScreenOn() else Modifier,
         containerColor = MiuixTheme.colorScheme.surface.copy(alpha = 1f),
     ) { insets ->
-        val canRematch = hasTrack && !AppPreferences.isOfflineModeEnabled(prefs) &&
-            isOnlineLyricSource(parsed?.apiPath ?: lyric?.apiPath)
+        val hasOnlineSource by remember(parsed?.apiPath, lyricState) {
+            derivedStateOf { isOnlineLyricSource(parsed?.apiPath ?: lyricState.value?.apiPath) }
+        }
+        val canRematch = hasTrack && !AppPreferences.isOfflineModeEnabled(prefs) && hasOnlineSource
         LyricsPlaybackSettingsSheet(
             show = sheet == PlaybackSheet.Settings,
             prefs = prefs,
@@ -704,7 +766,7 @@ private fun LyricsPlaybackContent(
                         .then(interactionModifier),
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -830,11 +892,24 @@ private fun LandscapeLyricsPlaybackLayout(
             val spaceFraction = ((maxHeight - 260.dp) / 160.dp).coerceIn(0f, 1f)
             // Lyrics already have 12 dp of vertical row padding.
             val rowSpacing = if (hasSubLyrics) lerp(6f, 8f, spaceFraction).dp else lerp(16f, 20f, spaceFraction).dp
-            lyrics(
-                Modifier.fadeLyricsAroundBars(0.dp, rememberUpdatedState(0.dp), topFade, bottomFade),
-                PaddingValues(top = anchor, bottom = trailingSpace),
-                rowSpacing,
-            )
+            val constrainLyricsWidth = maxWidth > 600.dp
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth()
+                        .then(if (constrainLyricsWidth) Modifier.widthIn(max = 600.dp) else Modifier),
+                ) {
+                    lyrics(
+                        Modifier.fadeLyricsAroundBars(0.dp, rememberUpdatedState(0.dp), topFade, bottomFade),
+                        PaddingValues(top = anchor, bottom = trailingSpace),
+                        rowSpacing,
+                    )
+                }
+            }
             if (followButton != null) {
                 Box(Modifier.align(Alignment.TopEnd).revealPlaybackChrome(expansionProgress)) {
                     followButton()
@@ -856,7 +931,7 @@ private fun LandscapePlaybackPanel(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier) {
-        val coverLimit = minOf(maxWidth * 0.68f, maxHeight * 0.46f)
+        val coverLimit = minOf(maxWidth * 0.68f, maxHeight * 0.46f, 320.dp)
         Layout(
             modifier = Modifier.fillMaxSize(),
             contents = listOf(
@@ -890,7 +965,7 @@ private fun LandscapePlaybackPanel(
             val available = metadataHeightLimit - trackHeight
             val gap = minOf(16.dp.roundToPx(), available / 4)
             val coverSize = minOf(coverLimit.roundToPx(), available - 2 * gap, safeWidth)
-            val controlsWidth = minOf(maxOf(coverSize, 250.dp.roundToPx()), (width * 0.85f).toInt(), safeWidth)
+            val controlsWidth = minOf(maxOf(coverSize, 250.dp.roundToPx()), (width * 0.85f).toInt(), safeWidth, 400.dp.roundToPx())
             val centeredControlsStart = (width - controlsWidth) / 2
             // Only shift the group if the centered controls would overlap the cutout.
             val controlsStart = maxOf(centeredControlsStart, safeStart)
@@ -995,6 +1070,8 @@ private fun LyricsPlaybackTrackInfo(
 @Composable
 private fun LyricsPlaybackList(
     lines: List<LyricLine>,
+    writersText: String?,
+    duetAlignment: Boolean,
     showTranslation: Boolean,
     showRomanization: Boolean,
     color: Color,
@@ -1073,12 +1150,13 @@ private fun LyricsPlaybackList(
             }
         }
     }
+    val expectedItemCount = lines.size + if (writersText != null) 1 else 0
     LaunchedEffect(
-        target, lines, following, suspendScroll, contentPadding, mainStyle, secondaryStyle, interludeHeight,
-        showTranslation, showRomanization, spacing, landscape, linePadding,
+        target, lines, writersText, duetAlignment, following, suspendScroll, contentPadding, mainStyle, secondaryStyle,
+        interludeHeight, showTranslation, showRomanization, spacing, landscape, linePadding,
     ) {
         if (suspendScroll) return@LaunchedEffect
-        val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == lines.size }
+        val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == expectedItemCount }
         val targetIndex = target.lineIndex.coerceAtLeast(0)
         val from = frame.value
         val targetGap = target.interlude
@@ -1287,17 +1365,26 @@ private fun LyricsPlaybackList(
     ) {
         items(count = lines.size, key = { it }) { index ->
             val line = lines[index]
+            val isRightAligned = duetAlignment && line.alignment == LyricAlignment.RIGHT
             val secondary = remember(line, showTranslation, showRomanization) {
                 playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
             }
             Column {
                 if (index == 0 && interludes.containsKey(0)) {
-                    PlaybackInterludeSpace(0, interludeHeight, frame, position, color)
+                    PlaybackInterludeSpace(
+                        beforeIndex = 0,
+                        lineHeight = interludeHeight,
+                        frame = frame,
+                        position = position,
+                        color = color,
+                        alignEnd = isRightAligned,
+                    )
                 }
                 PlaybackLyricRow(
                     line = line,
                     secondary = secondary,
                     index = index,
+                    isRightAligned = isRightAligned,
                     frame = frame,
                     programmaticScroll = programmaticScroll,
                     wave = wave,
@@ -1314,8 +1401,33 @@ private fun LyricsPlaybackList(
                     onSelect = { onSelect(index) },
                 )
                 if (interludes.containsKey(index + 1)) {
-                    PlaybackInterludeSpace(index + 1, interludeHeight, frame, position, color)
+                    val nextRightAligned = duetAlignment &&
+                        lines.getOrNull(index + 1)?.alignment == LyricAlignment.RIGHT
+                    PlaybackInterludeSpace(
+                        beforeIndex = index + 1,
+                        lineHeight = interludeHeight,
+                        frame = frame,
+                        position = position,
+                        color = color,
+                        alignEnd = nextRightAligned,
+                    )
                 }
+            }
+        }
+        if (writersText != null) {
+            item(key = "lyrics_writers_footer") {
+                PlaybackWritersFooter(
+                    text = writersText,
+                    index = lines.size,
+                    frame = frame,
+                    programmaticScroll = programmaticScroll,
+                    wave = wave,
+                    following = following,
+                    blurEnabled = blurEnabled && !manualScroll,
+                    listState = listState,
+                    landscape = landscape,
+                    color = color,
+                )
             }
         }
     }
@@ -1332,21 +1444,27 @@ private fun PlaybackInterludeSpace(
     frame: State<PlaybackLyricFrame>,
     position: State<Long?>,
     color: Color,
+    alignEnd: Boolean = false,
 ) {
     val interlude = remember(beforeIndex, frame) {
         derivedStateOf { frame.value.interlude?.takeIf { it.beforeLineIndex == beforeIndex } }
     }.value ?: return
     val description = stringResource(R.string.lyrics_playback_interlude)
+    val lineHeightDp = with(LocalDensity.current) { lineHeight.toDp() }
     Box(
-        propagateMinConstraints = true,
-        modifier = Modifier.layout { measurable, constraints ->
-            val placeable = measurable.measure(constraints.copy(minHeight = lineHeight, maxHeight = lineHeight))
-            val height = constraints.constrainHeight(frame.value.gapHeight.roundToInt())
-            layout(placeable.width, height) { placeable.placeRelative(0, 0) }
-        },
+        contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart,
+        modifier = Modifier
+            .fillMaxWidth()
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints.copy(minHeight = lineHeight, maxHeight = lineHeight))
+                val height = constraints.constrainHeight(frame.value.gapHeight.roundToInt())
+                layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+            },
     ) {
         Canvas(
-            modifier = Modifier.width(InterludeDotWidth)
+            modifier = Modifier
+                .width(InterludeDotWidth)
+                .height(lineHeightDp)
                 .semantics { contentDescription = description },
         ) {
             val motion = frame.value
@@ -1381,9 +1499,8 @@ private fun rememberRowWaveTranslationY(
     programmaticScroll: State<Float>,
     wave: PlaybackScrollWave,
 ): State<Float> {
-    val trackedScroll = remember { Animatable(programmaticScroll.value) }
-    val latestProgrammaticScroll by rememberUpdatedState(programmaticScroll.value)
-    var effectiveTarget by remember { mutableFloatStateOf(programmaticScroll.value) }
+    val trackedScroll = remember(programmaticScroll) { Animatable(programmaticScroll.value) }
+    var effectiveTarget by remember(trackedScroll) { mutableFloatStateOf(trackedScroll.value) }
     var animationMode by remember { mutableStateOf(PlaybackWaveMode.Idle) }
     var targetVersion by remember { mutableIntStateOf(0) }
 
@@ -1392,7 +1509,7 @@ private fun rememberRowWaveTranslationY(
             PlaybackWaveMode.Idle -> Unit
             PlaybackWaveMode.Snap -> {
                 animationMode = PlaybackWaveMode.Snap
-                effectiveTarget = latestProgrammaticScroll
+                effectiveTarget = programmaticScroll.value
                 targetVersion++
             }
             PlaybackWaveMode.Settle -> {
@@ -1447,6 +1564,7 @@ private fun PlaybackLyricRow(
     line: LyricLine,
     secondary: List<String>,
     index: Int,
+    isRightAligned: Boolean,
     frame: State<PlaybackLyricFrame>,
     programmaticScroll: State<Float>,
     wave: PlaybackScrollWave,
@@ -1464,6 +1582,13 @@ private fun PlaybackLyricRow(
 ) {
     val haptics = LocalHapticFeedback.current
     val waveTranslationY = rememberRowWaveTranslationY(index, programmaticScroll, wave)
+    val blurCache = remember { CachedBlurEffect() }
+    val rowMainStyle = remember(mainStyle, isRightAligned) {
+        if (isRightAligned) mainStyle.copy(textAlign = TextAlign.End) else mainStyle
+    }
+    val rowSecondaryStyle = remember(secondaryStyle, isRightAligned) {
+        if (isRightAligned) secondaryStyle.copy(textAlign = TextAlign.End) else secondaryStyle
+    }
     val selectionScale = remember { Animatable(1f) }
     LaunchedEffect(selectionPreview) {
         if (selectionPreview) {
@@ -1498,6 +1623,7 @@ private fun PlaybackLyricRow(
         }
     }
     BoxWithConstraints(
+        contentAlignment = if (isRightAligned) Alignment.TopEnd else Alignment.TopStart,
         modifier = Modifier.fillMaxWidth()
             .graphicsLayer {
                 translationY = waveTranslationY.value
@@ -1534,14 +1660,15 @@ private fun PlaybackLyricRow(
                     val scale = lerp(1f, CurrentLineScale, motion.scaleActivation(index))
                     scaleX = scale
                     scaleY = scale
-                    transformOrigin = TransformOrigin(0f, 0.5f)
+                    transformOrigin = TransformOrigin(if (isRightAligned) 1f else 0f, 0.5f)
                     val radius = if (blurEnabled && isRowVisibleInViewport(listState, index, waveTranslationY.value)) {
                         depth.value.mainBlur.dp.toPx()
                     } else {
                         0f
                     }
-                    renderEffect = if (radius > 0.05f) BlurEffect(radius, radius, TileMode.Decal) else null
+                    renderEffect = blurCache.resolve(radius)
                 },
+            horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val mainModifier = Modifier.graphicsLayer {
@@ -1559,7 +1686,7 @@ private fun PlaybackLyricRow(
                 current = sweeping,
                 position = position,
                 color = color,
-                style = mainStyle,
+                style = rowMainStyle,
                 modifier = measuredMainModifier,
                 sweepStrength = { frame.value.activation(index) },
                 unsungAlpha = {
@@ -1573,14 +1700,96 @@ private fun PlaybackLyricRow(
                         val activation = frame.value.activation(index)
                         alpha = playbackLyricSecondaryAlpha(depth.value.secondaryAlpha, activation, following)
                     },
+                    horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     secondary.forEach { text ->
-                        Text(text, style = secondaryStyle, color = color)
+                        Text(
+                            text = text,
+                            style = rowSecondaryStyle,
+                            color = color,
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+private class CachedBlurEffect {
+    private var lastQuantizedRadius = 0f
+    private var cachedEffect: BlurEffect? = null
+
+    fun resolve(radiusPx: Float): BlurEffect? {
+        if (radiusPx <= 0.05f) {
+            lastQuantizedRadius = 0f
+            cachedEffect = null
+            return null
+        }
+        val quantized = (radiusPx * 4f).roundToInt() / 4f
+        val current = cachedEffect
+        if (current != null && quantized == lastQuantizedRadius) {
+            return current
+        }
+        lastQuantizedRadius = quantized
+        return BlurEffect(quantized, quantized, TileMode.Decal).also { cachedEffect = it }
+    }
+}
+
+@Composable
+private fun PlaybackWritersFooter(
+    text: String,
+    index: Int,
+    frame: State<PlaybackLyricFrame>,
+    programmaticScroll: State<Float>,
+    wave: PlaybackScrollWave,
+    following: Boolean,
+    blurEnabled: Boolean,
+    listState: LazyListState,
+    landscape: Boolean,
+    color: Color,
+) {
+    val waveTranslationY = rememberRowWaveTranslationY(index, programmaticScroll, wave)
+    val blurCache = remember { CachedBlurEffect() }
+    val depth = remember(frame, index, landscape) {
+        derivedStateOf {
+            playbackLyricDepth(frame.value.distance(index), landscape)
+        }
+    }
+    val baseBodyStyle = MiuixTheme.textStyles.body2
+    val footerStyle = remember(baseBodyStyle) {
+        baseBodyStyle.copy(
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Start,
+        )
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                translationY = waveTranslationY.value
+                val radius = if (blurEnabled && following && isRowVisibleInViewport(listState, index, waveTranslationY.value)) {
+                    depth.value.secondaryBlur.dp.toPx()
+                } else {
+                    0f
+                }
+                renderEffect = blurCache.resolve(radius)
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+                alpha = if (following) {
+                    (depth.value.mainAlpha * 0.9f).coerceIn(0.32f, 0.54f)
+                } else {
+                    0.54f
+                }
+            }
+            .padding(top = 12.dp, bottom = 16.dp),
+    ) {
+        Text(
+            text = text,
+            style = footerStyle,
+            color = color,
+        )
     }
 }
 
@@ -1667,6 +1876,7 @@ private fun LyricsPlaybackProgress(
     onSeek: ((Long) -> Unit)?,
 ) {
     var draggedProgress by remember(duration, onSeek != null) { mutableStateOf<Float?>(null) }
+    var trackWidth by remember { mutableIntStateOf(0) }
     val latestPendingSeek by rememberUpdatedState(pendingSeek)
     val displayed = remember(position, duration, onSeek != null) {
         derivedStateOf {
@@ -1675,9 +1885,15 @@ private fun LyricsPlaybackProgress(
         }
     }
     val elapsedSecond by remember(displayed) { derivedStateOf { displayed.value / 1_000L } }
-    val fraction by remember(displayed, duration) {
-        derivedStateOf {
-            if (duration > 0L) (displayed.value.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    val fraction by remember(displayed, duration, onSeek != null) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val progress = if (duration > 0L) (displayed.value.toDouble() / duration).coerceIn(0.0, 1.0) else 0.0
+            val width = trackWidth
+            if (width > 0 && draggedProgress == null && latestPendingSeek == null) {
+                (progress * width).roundToInt().toFloat() / width
+            } else {
+                progress.toFloat()
+            }
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1698,7 +1914,7 @@ private fun LyricsPlaybackProgress(
                 thumbColor = Color.Transparent,
                 disabledThumbColor = Color.Transparent,
             ),
-            modifier = Modifier.fillMaxWidth().semantics {
+            modifier = Modifier.fillMaxWidth().onSizeChanged { trackWidth = it.width }.semantics {
                 if (onSeek != null) {
                     setProgress { target ->
                         onSeek((target.coerceIn(0f, 1f) * duration).roundToLong())

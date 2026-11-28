@@ -24,9 +24,10 @@ package com.example.islandlyrics.core.settings.search
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.InvocationHandler
@@ -86,7 +87,7 @@ class SettingsSearchEngineTest {
     fun testSearchEngine_titleMatch() {
         val map = mapOf(
             R.string.settings_capsule_notification to "胶囊与通知",
-            R.string.settings_core_header to "核心"
+            R.string.settings_display_appearance_header to "显示与外观"
         )
 
         val results = SettingsSearchEngine.search(
@@ -164,5 +165,76 @@ class SettingsSearchEngineTest {
             val action = item.action as SettingsSearchAction.Navigate
             assertEquals(SettingsNavigationTarget.MAIN_SETTINGS, action.target)
         }
+    }
+
+    @Test
+    fun testSearchRegistryFixes_tabsKeysVariantsAndSummaries() {
+        val itemsById = SettingsSearchRegistry.getAllItems().associateBy { it.id }
+
+        val dualLine = itemsById.getValue("pref_super_island_dual_line_mode").action as SettingsSearchAction.Navigate
+        assertEquals(SettingsNavigationTarget.CAPSULE_NOTIFICATION, dualLine.target)
+        assertEquals(CustomSettingsTab.NOTIFICATION, dualLine.tab)
+        assertEquals("key_super_island_dual_line_mode", dualLine.targetItemKey)
+
+        val blockXmsf = itemsById.getValue("pref_block_xmsf").action as SettingsSearchAction.Navigate
+        assertEquals(SettingsNavigationTarget.CAPSULE_NOTIFICATION, blockXmsf.target)
+        assertEquals(CustomSettingsTab.CAPSULE, blockXmsf.tab)
+        assertEquals("key_block_xmsf", blockXmsf.targetItemKey)
+
+        val pureBlack = itemsById.getValue("pref_theme_pure_black")
+        assertTrue(SettingsUiVariant.MATERIAL in pureBlack.supportedVariants)
+        assertFalse(SettingsUiVariant.MIUIX in pureBlack.supportedVariants)
+
+        val homeLyricPreview = itemsById.getValue("pref_home_lyric_preview")
+        assertNull(homeLyricPreview.summaryRes)
+
+        val language = itemsById.getValue("pref_language").action as SettingsSearchAction.Navigate
+        assertEquals(SettingsNavigationTarget.MAIN_SETTINGS, language.target)
+        assertEquals("key_language", language.targetItemKey)
+
+        val desktopItems = SettingsSearchRegistry.getAllItems().filter { it.id.startsWith("pref_desktop_lyrics_") }
+        assertTrue(desktopItems.size >= 11)
+        desktopItems.forEach { item ->
+            val nav = item.action as SettingsSearchAction.Navigate
+            assertEquals(SettingsNavigationTarget.DESKTOP_LYRICS, nav.target)
+            assertFalse("Missing targetItemKey on ${item.id}", nav.targetItemKey.isNullOrBlank())
+        }
+
+        val importOtherApps = itemsById.getValue("dialog_import_other_apps").action as SettingsSearchAction.TriggerDialog
+        assertEquals(MainSettingsDialogType.IMPORT_OTHER_APPS, importOtherApps.dialog)
+
+        val offlineMode = itemsById.getValue("pref_full_offline_mode").action as SettingsSearchAction.Navigate
+        assertEquals(SettingsNavigationTarget.LAB, offlineMode.target)
+        assertEquals("key_full_offline_mode", offlineMode.targetItemKey)
+    }
+
+    @Test
+    fun testSearchRegistry_updatedGroupBreadcrumbs() {
+        val itemsById = SettingsSearchRegistry.getAllItems().associateBy { it.id }
+
+        assertEquals(
+            listOf(R.string.settings_display_appearance_header),
+            itemsById.getValue("page_personalization").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_lyrics_sources_header),
+            itemsById.getValue("page_local_lyrics").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_players_services_header),
+            itemsById.getValue("page_lastfm").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_data_backup_header),
+            itemsById.getValue("page_cache_management").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_permissions_header),
+            itemsById.getValue("perm_read_notif").breadcrumbResList
+        )
+        assertEquals(
+            listOf(R.string.settings_general_header),
+            itemsById.getValue("pref_language").breadcrumbResList
+        )
     }
 }

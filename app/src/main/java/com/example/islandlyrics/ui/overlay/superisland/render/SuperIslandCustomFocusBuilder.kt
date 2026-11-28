@@ -175,7 +175,7 @@ internal class SuperIslandCustomFocusBuilder(
                         }
                         if (preferences.smallIslandShowProgressBar) {
                             progressInfo {
-                                progress = progressPercent
+                                progress = sanitizeSuperIslandProgress(progressPercent)
                                 colorReach = if (showHighlightColor) hexColor else "#757575"
                                 colorUnReach = "#333333"
                             }

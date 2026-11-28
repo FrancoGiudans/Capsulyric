@@ -42,6 +42,8 @@ import com.xzakota.hyper.notification.focus.model.ActionInfo
 import com.xzakota.hyper.notification.focus.model.CoverInfo
 import com.xzakota.hyper.notification.focus.model.HighlightInfoV3
 
+internal fun sanitizeSuperIslandProgress(progressPercent: Int): Int = progressPercent.coerceIn(0, 100)
+
 internal class SuperIslandStandardFocusBuilder(
     private val context: Context,
     private val iconCache: SuperIslandIconCache,
@@ -220,7 +222,7 @@ internal class SuperIslandStandardFocusBuilder(
                 }
             } else if (preferences.showProgressBar) {
                 progressInfo {
-                    progress = progressPercent
+                    progress = sanitizeSuperIslandProgress(progressPercent)
                     colorProgress = progressBarColor
                     colorProgressEnd = progressBarColor
                 }
@@ -271,7 +273,7 @@ internal class SuperIslandStandardFocusBuilder(
                         }
                         if (preferences.smallIslandShowProgressBar) {
                             progressInfo {
-                                progress = progressPercent
+                                progress = sanitizeSuperIslandProgress(progressPercent)
                                 colorReach = ringColor
                                 colorUnReach = "#333333"
                             }

@@ -48,16 +48,24 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -67,7 +75,10 @@ import androidx.compose.material.icons.filled.Home as MaterialHome
 import androidx.compose.material.icons.filled.Settings as MaterialSettings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail as Material3NavigationRail
+import androidx.compose.material3.NavigationRailItem as Material3NavigationRailItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider as Material3VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -126,6 +137,11 @@ import kotlin.math.sign
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationRail
+import top.yukonga.miuix.kmp.basic.NavigationRailDefaults
+import top.yukonga.miuix.kmp.basic.NavigationRailItem
+import top.yukonga.miuix.kmp.basic.NavigationRailValue
+import top.yukonga.miuix.kmp.basic.rememberNavigationRailState
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.highlight.Highlight
@@ -309,7 +325,7 @@ fun MiuixTopLevelFloatingNavigationBar(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val barWidth = maxWidth * 0.69f
+        val barWidth = (maxWidth * 0.69f).coerceIn(240.dp, 360.dp)
         val totalHorizontalPadding = 24.dp
         val totalItemSpacing = 24.dp
         val itemWidth = (barWidth - totalHorizontalPadding - totalItemSpacing) / TopLevelDestination.entries.size
@@ -757,5 +773,156 @@ fun MiuixTopLevelNavigationBar(
                 label = stringResource(destination.labelRes)
             )
         }
+    }
+}
+
+@Composable
+fun MiuixTopLevelNavigationRail(
+    currentDestination: TopLevelDestination,
+    onNavigate: (TopLevelDestination) -> Unit,
+    expandable: Boolean,
+    expandedByDefault: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (expandable) {
+        val railState = rememberNavigationRailState(
+            initialValue = if (expandedByDefault) NavigationRailValue.Expanded else NavigationRailValue.Collapsed,
+        )
+        LaunchedEffect(expandedByDefault) {
+            if (expandedByDefault) railState.expand() else railState.collapse()
+        }
+        NavigationRail(
+            state = railState,
+            modifier = modifier,
+        ) {
+            TopLevelDestination.entries.forEach { destination ->
+                val selected = currentDestination == destination
+                NavigationRailItem(
+                    selected = selected,
+                    onClick = { onNavigate(destination) },
+                    icon = destination.miuixIcon(selected),
+                    label = stringResource(destination.labelRes),
+                )
+            }
+        }
+    } else {
+        NavigationRail(
+            modifier = modifier,
+            expanded = false,
+            minWidth = 72.dp,
+            expandedWidth = NavigationRailDefaults.ExpandedWidth,
+        ) {
+            TopLevelDestination.entries.forEach { destination ->
+                val selected = currentDestination == destination
+                NavigationRailItem(
+                    selected = selected,
+                    onClick = { onNavigate(destination) },
+                    icon = destination.miuixIcon(selected),
+                    label = stringResource(destination.labelRes),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MaterialTopLevelNavigationRail(
+    currentDestination: TopLevelDestination,
+    onNavigate: (TopLevelDestination) -> Unit,
+    expanded: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val railColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val railInsets = WindowInsets.systemBars
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Start)
+        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+
+    Row(modifier = modifier.fillMaxHeight()) {
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(212.dp)
+                    .background(railColor)
+                    .windowInsetsPadding(railInsets)
+                    .padding(horizontal = 12.dp, vertical = 16.dp)
+                    .selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                TopLevelDestination.entries.forEach { destination ->
+                    val selected = currentDestination == destination
+                    val label = stringResource(destination.labelRes)
+                    val containerColor = if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    }
+                    val contentColor = if (selected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(containerColor)
+                            .selectable(
+                                selected = selected,
+                                role = Role.Tab,
+                                onClick = { onNavigate(destination) },
+                            )
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = destination.materialIcon,
+                            contentDescription = null,
+                            tint = contentColor,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = label,
+                            color = contentColor,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        } else {
+            Material3NavigationRail(
+                containerColor = railColor,
+                windowInsets = railInsets,
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                TopLevelDestination.entries.forEach { destination ->
+                    val selected = currentDestination == destination
+                    val label = stringResource(destination.labelRes)
+                    Material3NavigationRailItem(
+                        selected = selected,
+                        onClick = { onNavigate(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = destination.materialIcon,
+                                contentDescription = label,
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+        Material3VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }

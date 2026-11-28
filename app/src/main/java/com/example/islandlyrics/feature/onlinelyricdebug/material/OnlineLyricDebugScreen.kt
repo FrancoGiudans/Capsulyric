@@ -98,13 +98,17 @@ import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineLyricDebugScreen(
     onBack: () -> Unit,
-    viewModel: OnlineLyricDebugViewModel = viewModel()
+    viewModel: OnlineLyricDebugViewModel = viewModel(),
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -175,26 +179,34 @@ fun OnlineLyricDebugScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.online_lyric_rematch_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.online_lyric_debug_back)
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.online_lyric_debug_back)
+                            )
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = padding.calculateBottomPadding() + 24.dp,
-            )
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val useTwoPane = layoutInfo.useTwoPanePreview && maxWidth >= 600.dp
+            val singlePaneHorizontalExtra = if (
+                !useTwoPane &&
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            val dividerColor = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
+            val leftItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             item {
                 SettingsSectionHeader(
                     text = stringResource(R.string.online_lyric_rematch_current_playback),
@@ -342,6 +354,8 @@ fun OnlineLyricDebugScreen(
             item {
                 TrackIdInputCard(viewModel, isFetching, offlineModeEnabled, isInstrumental || isAlbumInstrumental)
             }
+            }
+            val rightItems: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
 
             if (selectedResult != null && rematchedLyrics.isNotBlank()) {
                 item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_result_title)) }
@@ -421,6 +435,49 @@ fun OnlineLyricDebugScreen(
                             )
                         }
                     }
+                }
+            }
+            }
+            if (useTwoPane) {
+                AdaptiveTwoPane(
+                    startWeight = 0.42f,
+                    dividerColor = dividerColor,
+                    modifier = Modifier.fillMaxSize(),
+                    startPane = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraBottom = 24.dp,
+                                extraEnd = 4.dp,
+                            ),
+                            content = leftItems,
+                        )
+                    },
+                    endPane = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = padding.adaptiveContentPadding(
+                                layoutDirection = layoutDirection,
+                                extraStart = 4.dp,
+                                extraBottom = 24.dp,
+                            ),
+                            content = rightItems,
+                        )
+                    },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    ),
+                ) {
+                    leftItems()
+                    rightItems()
                 }
             }
         }

@@ -42,6 +42,8 @@ import com.example.islandlyrics.lyrics.export.LyricExporter
 import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
 import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager.LrcFileInfo
 import com.example.islandlyrics.feature.lyric.toUserMessage
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -59,7 +61,8 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 fun MiuixLocalLyricDirectoryScreen(
     directoryUri: Uri,
     directoryName: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -89,8 +92,10 @@ fun MiuixLocalLyricDirectoryScreen(
                 largeTitle = directoryName,
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {
@@ -146,13 +151,26 @@ fun MiuixLocalLyricDirectoryScreen(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
             refreshTexts = refreshTexts,
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding() + 24.dp
-                )
-            ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val layoutInfo = LocalAppWindowLayout.current
+                val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+                val singlePaneHorizontalExtra = if (
+                    layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                    maxWidth > layoutInfo.maxReadableWidth
+                ) {
+                    (maxWidth - layoutInfo.maxReadableWidth) / 2
+                } else {
+                    0.dp
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = padding.adaptiveContentPadding(
+                        layoutDirection = layoutDirection,
+                        extraStart = singlePaneHorizontalExtra,
+                        extraEnd = singlePaneHorizontalExtra,
+                        extraBottom = 24.dp,
+                    )
+                ) {
                 if (loading) {
                     item {
                         Text(
@@ -213,6 +231,7 @@ fun MiuixLocalLyricDirectoryScreen(
                     }
                 }
             }
+        }
         }
 
         MiuixBlurDialog(

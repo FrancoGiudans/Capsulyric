@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.feature.faq.material
 
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.text.method.LinkMovementMethod
@@ -53,7 +55,10 @@ import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FAQScreen(onBack: () -> Unit) {
+fun FAQScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     
     data class QAItem(val question: CharSequence, val answer: CharSequence)
@@ -90,7 +95,8 @@ fun FAQScreen(onBack: () -> Unit) {
                     QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error)),
                     QAItem(context.resources.getText(R.string.faq_q_how_to_diagnostics), context.resources.getText(R.string.faq_a_how_to_diagnostics)),
                     QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap)),
-                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation))
+                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation)),
+                    QAItem(context.resources.getText(R.string.faq_q_lyricon_core_service), context.resources.getText(R.string.faq_a_lyricon_core_service))
                 )
             ),
             FAQCategory(
@@ -108,41 +114,54 @@ fun FAQScreen(onBack: () -> Unit) {
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.faq_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = paddingValues.calculateBottomPadding(),
-            )
-        ) {
-            faqData.forEach { category ->
-                item {
-                    SettingsSectionHeader(text = category.title)
-                }
-                items(category.items) { item ->
-                    FAQItem(question = item.question, answer = item.answer)
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-                }
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
             }
-            
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                )
+            ) {
+                faqData.forEach { category ->
+                    item {
+                        SettingsSectionHeader(text = category.title)
+                    }
+                    items(category.items) { item ->
+                        FAQItem(question = item.question, answer = item.answer)
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
     }

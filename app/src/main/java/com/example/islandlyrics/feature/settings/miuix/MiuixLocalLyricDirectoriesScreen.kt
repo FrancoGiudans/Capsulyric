@@ -39,6 +39,8 @@ import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
@@ -50,7 +52,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun MiuixLocalLyricDirectoriesScreen(
     onBack: () -> Unit,
-    onOpenDirectory: ((Uri, String) -> Unit)? = null
+    onOpenDirectory: ((Uri, String) -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val state = rememberLocalLyricDirectoriesState()
@@ -61,56 +64,73 @@ fun MiuixLocalLyricDirectoriesScreen(
                 title = stringResource(R.string.settings_local_lyrics_title),
                 largeTitle = stringResource(R.string.settings_local_lyrics_title),
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 }
             )
         },
         containerColor = MiuixTheme.colorScheme.surface
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
-            )
-        ) {
-            item {
-                MiuixLocalLyricDirectoriesContent(
-                    state = state,
-                    showHeader = false,
-                    onOpenDirectory = onOpenDirectory
-                        ?: { uri, name ->
-                            context.startActivity(
-                                Intent(context, LocalLyricDirectoryActivity::class.java).apply {
-                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, uri.toString())
-                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, name)
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 12.dp,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
+                item {
+                    MiuixLocalLyricDirectoriesContent(
+                        state = state,
+                        showHeader = false,
+                        onOpenDirectory = onOpenDirectory
+                            ?: { uri, name ->
+                                context.startActivity(
+                                    Intent(context, LocalLyricDirectoryActivity::class.java).apply {
+                                        putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, uri.toString())
+                                        putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, name)
+                                    }
+                                )
+                            }
+                    )
+                }
+                item {
+                    MiuixLookingForOtherSettings(
+                        links = listOf(
+                            OtherSettingLink(
+                                titleRes = R.string.settings_link_parser_rules,
+                                action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES),
+                                onClick = {
+                                    context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                                }
+                            ),
+                            OtherSettingLink(
+                                titleRes = R.string.title_cache_management,
+                                action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT),
+                                onClick = {
+                                    context.startActivity(Intent(context, CacheManagementActivity::class.java))
                                 }
                             )
-                        }
-                )
-            }
-            item {
-                MiuixLookingForOtherSettings(
-                    links = listOf(
-                        OtherSettingLink(
-                            titleRes = R.string.settings_link_parser_rules,
-                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES),
-                            onClick = {
-                                context.startActivity(Intent(context, ParserRuleActivity::class.java))
-                            }
                         ),
-                        OtherSettingLink(
-                            titleRes = R.string.title_cache_management,
-                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT),
-                            onClick = {
-                                context.startActivity(Intent(context, CacheManagementActivity::class.java))
-                            }
-                        )
-                    ),
-                    modifier = Modifier.padding(top = 12.dp)
-                )
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
             }
         }
     }

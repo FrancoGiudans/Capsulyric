@@ -38,6 +38,7 @@ package com.example.islandlyrics.ui.miuix.theme
 
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEdgeHighlightEnabled
+import com.example.islandlyrics.ui.adaptive.ProvideAppWindowLayout
 
 import android.app.Activity
 import android.content.Context
@@ -189,14 +190,16 @@ fun MiuixAppTheme(
         LocalMiuixBlurEdgeHighlightEnabled provides blurEdgeHighlightEnabled
     ) {
         MiuixTheme(controller = controller) {
-            if (backDispatcherOwner != null) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides backDispatcherOwner
-                ) {
+            ProvideAppWindowLayout {
+                if (backDispatcherOwner != null) {
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides backDispatcherOwner
+                    ) {
+                        content()
+                    }
+                } else {
                     content()
                 }
-            } else {
-                content()
             }
         }
     }

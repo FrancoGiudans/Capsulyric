@@ -29,4 +29,16 @@ class SuperLyricTimelineFallbackTest {
         assertFalse(hasCurrentSuperLyricTimeline(track, null, timeline))
         assertFalse(hasCurrentSuperLyricTimeline(track, track, null))
     }
+
+    @Test fun lyriconTimelineSuppressesRedundantNetworkRequestForSameTrack() {
+        val lyriconTimeline = timeline.copy(apiPath = "Lyricon")
+        assertTrue(hasCurrentLyriconTimeline(track, track, lyriconTimeline))
+        assertFalse(hasCurrentLyriconTimeline(track, track.copy(mediaId = "2"), lyriconTimeline))
+        assertFalse(hasCurrentLyriconTimeline(track, track.copy(packageName = "other"), lyriconTimeline))
+        assertFalse(hasCurrentLyriconTimeline(track, track, timeline))
+        assertFalse(hasCurrentLyriconTimeline(track, track, lyriconTimeline.copy(
+            timelineCapability = LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
+        )))
+        assertFalse(hasCurrentLyriconTimeline(track, null, lyriconTimeline))
+    }
 }

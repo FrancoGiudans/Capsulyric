@@ -41,9 +41,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -79,6 +85,7 @@ import androidx.compose.material3.AlertDialog as Material3AlertDialog
 import androidx.compose.material3.DropdownMenu as Material3DropdownMenu
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
@@ -178,6 +185,15 @@ fun MaterialBlurScaffold(
         FabPosition.EndOverlay -> MiuixFabPosition.End
         else -> MiuixFabPosition.End
     }
+    val hasStartRail = LocalAdaptiveHasStartRail.current
+    val effectiveInsets = if (hasStartRail) {
+        contentWindowInsets.exclude(
+            WindowInsets.displayCutout.only(WindowInsetsSides.Start)
+                .union(WindowInsets.navigationBars.only(WindowInsetsSides.Start))
+        )
+    } else {
+        contentWindowInsets
+    }
 
     if (blurEnabled) {
         val blurBackdrop = rememberLayerBackdrop {
@@ -196,7 +212,7 @@ fun MaterialBlurScaffold(
                 floatingActionButton = floatingActionButton,
                 floatingActionButtonPosition = miuixFabPosition,
                 containerColor = scaffoldContainerColor,
-                contentWindowInsets = contentWindowInsets
+                contentWindowInsets = effectiveInsets
             ) { paddingValues ->
                 Box(
                     modifier = Modifier
@@ -217,7 +233,7 @@ fun MaterialBlurScaffold(
             floatingActionButton = floatingActionButton,
             floatingActionButtonPosition = miuixFabPosition,
             containerColor = scaffoldContainerColor,
-            contentWindowInsets = contentWindowInsets
+            contentWindowInsets = effectiveInsets
         ) { paddingValues ->
             content(paddingValues)
         }

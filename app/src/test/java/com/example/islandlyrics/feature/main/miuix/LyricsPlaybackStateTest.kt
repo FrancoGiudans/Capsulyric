@@ -1,6 +1,9 @@
 package com.example.islandlyrics.feature.main.miuix
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricInfoFilter
+import com.example.islandlyrics.lyrics.online.parser.TrackFilterContext
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -213,5 +216,51 @@ class LyricsPlaybackStateTest {
         assertEquals(1.025f, interrupted.scaleActivation(2), 0.0001f)
         assertEquals(-0.025f, interrupted.scaleActivation(1), 0.0001f)
         assertEquals(0f, interrupted.scaleActivation(3), 0.0001f)
+    }
+
+    @Test
+    fun formatPlaybackWritersJoinsNonBlankWritersWithAppleMusicPrefix() {
+        assertNull(formatPlaybackWriters(emptyList()))
+        assertNull(formatPlaybackWriters(listOf("   ", "")))
+        assertEquals("Written by: 易家扬", formatPlaybackWriters(listOf("易家扬")))
+        assertEquals(
+            "Written by: 易家扬, 林俊杰 JJ LIN",
+            formatPlaybackWriters(listOf(" 易家扬 ", "", "林俊杰 JJ LIN")),
+        )
+    }
+
+    @Test
+    fun playbackWritersOnlyEmitsForMultiLineTimeline() {
+        val multiLine = LyricRepository.ParsedLyricsInfo(
+            lines = listOf(LyricLine(18_500L, 21_000L, "孤单听雨的猫")),
+            hasSyllable = false,
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+            writers = listOf("易家扬", "林俊杰"),
+        )
+        assertEquals(listOf("易家扬", "林俊杰"), multiLine.playbackWriters())
+
+        val singleLine = multiLine.copy(timelineCapability = LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY)
+        assertEquals(emptyList<String>(), singleLine.playbackWriters())
+    }
+
+    @Test
+    fun filteringIntroCreditsActivatesIntroInterludeCountdown() {
+        val raw = listOf(
+            LyricLine(0L, 1_000L, "交换余生 - 林俊杰"),
+            LyricLine(1_000L, 2_000L, "词：易家扬"),
+            LyricLine(2_000L, 3_000L, "曲：林俊杰"),
+            LyricLine(18_500L, 22_000L, "孤单听雨的猫"),
+            LyricLine(22_000L, 26_000L, "往时间裂缝里看到了我"),
+        )
+        val unfilteredInterludes = raw.playbackInterludes()
+        assertNull(unfilteredInterludes[0])
+
+        val filtered = OnlineLyricInfoFilter.process(
+            lines = raw,
+            context = TrackFilterContext(title = "交换余生", artist = "林俊杰"),
+            filterInfoLines = true,
+        )
+        val filteredInterludes = filtered.lines.playbackInterludes()
+        assertEquals(PlaybackInterlude(0, 0L, 18_500L), filteredInterludes[0])
     }
 }

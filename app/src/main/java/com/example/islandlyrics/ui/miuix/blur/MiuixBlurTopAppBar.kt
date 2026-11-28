@@ -36,10 +36,20 @@
 
 package com.example.islandlyrics.ui.miuix.blur
 
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.ui.miuix.theme.neutralMiuixTopBarColor
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,32 +88,66 @@ fun MiuixBlurTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val hasStartRail = LocalAdaptiveHasStartRail.current
     val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
     val shouldUseBlur = blurEnabled && backdrop != null
+    val handleEndInsetsOnly = hasStartRail && defaultWindowInsetsPadding
+    val innerInsetsModifier = if (handleEndInsetsOnly) {
+        Modifier.windowInsetsPadding(
+            WindowInsets.displayCutout.only(WindowInsetsSides.End)
+                .union(WindowInsets.navigationBars.only(WindowInsetsSides.End))
+        )
+    } else {
+        Modifier
+    }
+    val innerBarColor = if (shouldUseBlur || handleEndInsetsOnly) Color.Transparent else topBarColor
+    val effectiveDefaultInsets = defaultWindowInsetsPadding && !hasStartRail
 
     DemoBlurredTopBar(
         modifier = modifier,
         backdrop = backdrop,
         blurEnabled = shouldUseBlur,
-        surfaceColor = topBarColor
+        surfaceColor = topBarColor,
+        paintFallbackBackground = handleEndInsetsOnly
     ) {
-        TopAppBar(
-            title = title,
-            color = if (shouldUseBlur) Color.Transparent else topBarColor,
-            titleColor = titleColor,
-            largeTitle = largeTitle,
-            largeTitleColor = largeTitleColor,
-            subtitle = subtitle,
-            subtitleColor = subtitleColor,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            scrollBehavior = scrollBehavior,
-            defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-            titlePadding = titlePadding,
-            navigationIconPadding = navigationIconPadding,
-            actionIconPadding = actionIconPadding,
-            bottomContent = bottomContent
-        )
+        if (layoutInfo.useCompactTopBar) {
+            SmallTopAppBar(
+                title = title,
+                modifier = innerInsetsModifier,
+                color = innerBarColor,
+                titleColor = titleColor,
+                subtitle = subtitle,
+                subtitleColor = subtitleColor,
+                navigationIcon = navigationIcon,
+                actions = actions,
+                scrollBehavior = scrollBehavior,
+                defaultWindowInsetsPadding = effectiveDefaultInsets,
+                titlePadding = titlePadding,
+                navigationIconPadding = navigationIconPadding,
+                actionIconPadding = actionIconPadding,
+                bottomContent = bottomContent
+            )
+        } else {
+            TopAppBar(
+                title = title,
+                modifier = innerInsetsModifier,
+                color = innerBarColor,
+                titleColor = titleColor,
+                largeTitle = largeTitle,
+                largeTitleColor = largeTitleColor,
+                subtitle = subtitle,
+                subtitleColor = subtitleColor,
+                navigationIcon = navigationIcon,
+                actions = actions,
+                scrollBehavior = scrollBehavior,
+                defaultWindowInsetsPadding = effectiveDefaultInsets,
+                titlePadding = titlePadding,
+                navigationIconPadding = navigationIconPadding,
+                actionIconPadding = actionIconPadding,
+                bottomContent = bottomContent
+            )
+        }
     }
 }
 
@@ -129,25 +173,39 @@ fun MiuixBlurSmallTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
+    val hasStartRail = LocalAdaptiveHasStartRail.current
     val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
     val shouldUseBlur = blurEnabled && backdrop != null
+    val handleEndInsetsOnly = hasStartRail && defaultWindowInsetsPadding
+    val innerInsetsModifier = if (handleEndInsetsOnly) {
+        Modifier.windowInsetsPadding(
+            WindowInsets.displayCutout.only(WindowInsetsSides.End)
+                .union(WindowInsets.navigationBars.only(WindowInsetsSides.End))
+        )
+    } else {
+        Modifier
+    }
+    val innerBarColor = if (shouldUseBlur || handleEndInsetsOnly) Color.Transparent else topBarColor
+    val effectiveDefaultInsets = defaultWindowInsetsPadding && !hasStartRail
 
     DemoBlurredTopBar(
         modifier = modifier,
         backdrop = backdrop,
         blurEnabled = shouldUseBlur,
-        surfaceColor = topBarColor
+        surfaceColor = topBarColor,
+        paintFallbackBackground = handleEndInsetsOnly
     ) {
         SmallTopAppBar(
             title = title,
-            color = if (shouldUseBlur) Color.Transparent else topBarColor,
+            modifier = innerInsetsModifier,
+            color = innerBarColor,
             titleColor = titleColor,
             subtitle = subtitle,
             subtitleColor = subtitleColor,
             navigationIcon = navigationIcon,
             actions = actions,
             scrollBehavior = scrollBehavior,
-            defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+            defaultWindowInsetsPadding = effectiveDefaultInsets,
             titlePadding = titlePadding,
             navigationIconPadding = navigationIconPadding,
             actionIconPadding = actionIconPadding,
@@ -162,6 +220,7 @@ private fun DemoBlurredTopBar(
     backdrop: top.yukonga.miuix.kmp.blur.Backdrop?,
     blurEnabled: Boolean,
     surfaceColor: Color,
+    paintFallbackBackground: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val blurModifier = if (blurEnabled && backdrop != null) {
@@ -175,6 +234,8 @@ private fun DemoBlurredTopBar(
                 )
             )
         )
+    } else if (paintFallbackBackground) {
+        Modifier.background(surfaceColor)
     } else {
         Modifier
     }

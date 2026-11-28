@@ -179,6 +179,7 @@ object BackupCategories {
             "predictive_back_animation_style",
             "service_enabled",
             "lyric_text_display_mode", "disable_lyric_scrolling",
+            AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES,
             AppPreferences.Keys.LASTFM_ENABLED,
             AppPreferences.Keys.APPLE_MUSIC_STOREFRONT,
             AppPreferences.Keys.APPLE_MUSIC_LANGUAGE
@@ -191,7 +192,8 @@ object BackupCategories {
                 "predictive_back_animation_style", "service_enabled"
             )),
             SubGroup("general_lyric_display", listOf(
-                "lyric_text_display_mode", "disable_lyric_scrolling"
+                "lyric_text_display_mode", "disable_lyric_scrolling",
+                AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES
             )),
             SubGroup("general_lastfm", listOf(AppPreferences.Keys.LASTFM_ENABLED)),
             SubGroup("general_apple_music", listOf(

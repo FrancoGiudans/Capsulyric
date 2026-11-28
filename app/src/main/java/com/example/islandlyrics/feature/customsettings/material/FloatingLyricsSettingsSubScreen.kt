@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -57,6 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.AdaptiveReadableBox
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
@@ -76,7 +81,13 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
+fun FloatingLyricsSettingsSubScreen(
+    prefs: SharedPreferences,
+    settingModifier: @Composable (String) -> Modifier = { Modifier },
+    twoPanePreview: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(),
+    footerContent: (@Composable () -> Unit)? = null,
+) {
     val context = LocalContext.current
 
     var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
@@ -158,31 +169,39 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    FloatingLyricsSettingsPreview(
-        style = FloatingLyricsStyle(
-            textSizeSp = textSizeSp,
-            textWeight = textWeight,
-            baseTextColor = customTextColor.toArgb(),
-            followAlbumColor = followAlbumColor,
-            showAlbumArt = showAlbumArt,
-            enableTextStroke = textStroke,
-            enableTextBackground = textBackground
-        ),
-        display = FloatingLyricsDisplayConfig(
-            secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
-            showSecondLine = showSecondLine,
-            neighborAlignment = neighborAlignment,
-            wordHighlight = wordHighlight
-        ),
-        wordAnimationHighFps = wordAnimationHighFps,
-        useMiuix = false
-    )
+    val previewContent: @Composable (Modifier) -> Unit = { previewModifier ->
+        Box(modifier = previewModifier, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().widthIn(max = 380.dp)) {
+                FloatingLyricsSettingsPreview(
+                    style = FloatingLyricsStyle(
+                        textSizeSp = textSizeSp,
+                        textWeight = textWeight,
+                        baseTextColor = customTextColor.toArgb(),
+                        followAlbumColor = followAlbumColor,
+                        showAlbumArt = showAlbumArt,
+                        enableTextStroke = textStroke,
+                        enableTextBackground = textBackground
+                    ),
+                    display = FloatingLyricsDisplayConfig(
+                        secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
+                        showSecondLine = showSecondLine,
+                        neighborAlignment = neighborAlignment,
+                        wordHighlight = wordHighlight
+                    ),
+                    wordAnimationHighFps = wordAnimationHighFps,
+                    useMiuix = false
+                )
+            }
+        }
+    }
 
-    SettingsCard {
+    val settingsCardContent: @Composable () -> Unit = {
+        SettingsCard {
         SettingsSwitchItem(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             subtitle = stringResource(R.string.settings_floating_lyrics_enabled_desc),
             checked = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_enabled"),
             onCheckedChange = { enabled ->
                 if (enabled) enableLyrics() else LabFeatureManager.setFloatingLyricsEnabled(context, false)
             }
@@ -193,6 +212,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             subtitle = stringResource(R.string.settings_floating_lyrics_show_desc),
             checked = featureEnabled && !floatingSession.isHidden,
             enabled = featureEnabled,
+            modifier = settingModifier("key_floating_lyrics_show"),
             onCheckedChange = { visible ->
                 if (visible) showLyrics() else FloatingLyricsVisibility.hide(prefs)
             }
@@ -204,6 +224,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             SettingsTextItem(
                 title = stringResource(R.string.settings_floating_recovery),
                 value = stringResource(recovery.label),
+                modifier = settingModifier("key_floating_recovery"),
                 onClick = { recoveryMenuExpanded = true }
             )
             MaterialBlurDropdownMenu(
@@ -226,6 +247,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             title = stringResource(R.string.settings_floating_keep_on_pause),
             subtitle = stringResource(R.string.settings_floating_keep_on_pause_desc),
             checked = keepOnPause,
+            modifier = settingModifier("key_floating_keep_on_pause"),
             onCheckedChange = { value ->
                 prefs.edit { putBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, value) }
             }
@@ -235,6 +257,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_show_album_art),
                 subtitle = stringResource(R.string.settings_floating_show_album_art_desc),
                 checked = showAlbumArt,
+                modifier = settingModifier("key_floating_show_album_art"),
                 onCheckedChange = {
                     showAlbumArt = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
@@ -246,6 +269,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_text_stroke),
                 subtitle = stringResource(R.string.settings_floating_text_stroke_desc),
                 checked = textStroke,
+                modifier = settingModifier("key_floating_text_stroke"),
                 onCheckedChange = {
                     textStroke = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
@@ -257,6 +281,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_text_background),
                 subtitle = stringResource(R.string.settings_floating_text_background_desc),
                 checked = textBackground,
+                modifier = settingModifier("key_floating_text_background"),
                 onCheckedChange = {
                     textBackground = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
@@ -268,6 +293,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_show_second_line),
                 subtitle = stringResource(R.string.settings_floating_show_second_line_desc),
                 checked = showSecondLine,
+                modifier = settingModifier("key_floating_show_second_line"),
                 onCheckedChange = {
                     showSecondLine = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
@@ -294,6 +320,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_word_highlight),
                 subtitle = stringResource(R.string.settings_floating_word_highlight_desc),
                 checked = wordHighlight,
+                modifier = settingModifier("key_floating_word_highlight"),
                 onCheckedChange = {
                     wordHighlight = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
@@ -309,6 +336,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_word_animation_fps),
                 subtitle = stringResource(R.string.settings_floating_word_animation_fps_desc),
                 value = if (wordAnimationHighFps) highFrameRate else standardFrameRate,
+                modifier = settingModifier("key_floating_word_animation_fps"),
                 onClick = { frameRateMenuExpanded = true }
             )
             MaterialBlurDropdownMenu(
@@ -332,6 +360,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 title = stringResource(R.string.settings_floating_follow_album_color),
                 subtitle = stringResource(R.string.settings_floating_follow_album_color_desc),
                 checked = followAlbumColor,
+                modifier = settingModifier("key_floating_follow_album_color"),
                 onCheckedChange = {
                     if (it && floatingTextColorEditing) {
                         customTextColor = floatingTextColorSnapshot
@@ -375,7 +404,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
 
         SettingsCardDivider()
         ListItem(
-            modifier = Modifier.clickable { showFontSettings = true },
+            modifier = settingModifier("key_floating_font_settings").clickable { showFontSettings = true },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             headlineContent = {
                 Text(stringResource(R.string.settings_floating_font_settings), style = MaterialTheme.typography.bodyLarge)
@@ -399,6 +428,54 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     .height(48.dp)
         ) {
                 Text(stringResource(R.string.settings_floating_position_reset))
+        }
+        }
+    }
+
+    if (twoPanePreview) {
+        val layoutDirection = LocalLayoutDirection.current
+        AdaptiveTwoPane(
+            startWeight = 0.40f,
+            spacing = 16.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
+                    end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp
+                ),
+            startPane = {
+                previewContent(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding() + 12.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 24.dp
+                        )
+                )
+            },
+            endPane = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            top = contentPadding.calculateTopPadding() + 12.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 24.dp
+                        )
+                ) {
+                    settingsCardContent()
+                    footerContent?.invoke()
+                }
+            }
+        )
+    } else {
+        AdaptiveReadableBox {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                previewContent(Modifier.fillMaxWidth())
+                settingsCardContent()
+                footerContent?.invoke()
+            }
         }
     }
 

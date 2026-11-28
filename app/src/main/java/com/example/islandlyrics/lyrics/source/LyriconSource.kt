@@ -28,8 +28,6 @@ import android.os.Looper
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
-import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
-import io.github.proify.lyricon.lyric.model.RichLyricLine
 import io.github.proify.lyricon.lyric.model.Song
 import io.github.proify.lyricon.subscriber.ActivePlayerListener
 import io.github.proify.lyricon.subscriber.ConnectionListener
@@ -49,308 +47,393 @@ class LyriconSource(private val context: Context) {
     private var subscriber: LyriconSubscriber? = null
     private var started = false
     private var subscribed = false
+    private var sessionGeneration = 0L
+    private var retryDelayMs = INITIAL_RETRY_MS
     private var activeProviderInfo: ProviderInfo? = null
-    private var lastLyric = ""
+    private var latestSong: Song? = null
+    private var isPlainTextMode = false
+    private var lastPublishedTextKey: Pair<String, String?>? = null
+
+    @Volatile
+    private var lastPositionMs = -1L
 
     private val appNameCache = HashMap<String, String>()
 
-    private val connectionListener = object : ConnectionListener {
+    private val reconnectRunnable = Runnable {
+        if (!started) return@Runnable
+        if (!ParserRuleHelper.hasEnabledLyriconRule(context)) {
+            stop()
+            return@Runnable
+        }
+        AppLogger.getInstance().d(TAG, "Reconnecting Lyricon subscriber after timeout/disconnect")
+        reconnectSubscriber()
+    }
+
+    private fun createConnectionListener(generation: Long) = object : ConnectionListener {
         override fun onConnected(subscriber: LyriconSubscriber) {
-            AppLogger.getInstance().i(TAG, "Lyricon connected")
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                retryDelayMs = INITIAL_RETRY_MS
+                mainHandler.removeCallbacks(reconnectRunnable)
+                AppLogger.getInstance().i(TAG, "Lyricon connected")
+            }
         }
 
         override fun onReconnected(subscriber: LyriconSubscriber) {
-            AppLogger.getInstance().i(TAG, "Lyricon reconnected")
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                retryDelayMs = INITIAL_RETRY_MS
+                mainHandler.removeCallbacks(reconnectRunnable)
+                AppLogger.getInstance().i(TAG, "Lyricon reconnected")
+            }
         }
 
         override fun onDisconnected(subscriber: LyriconSubscriber) {
-            AppLogger.getInstance().d(TAG, "Lyricon disconnected")
+            onMain {
+                if (generation != sessionGeneration) return@onMain
+                resetActiveFeedState()
+                AppLogger.getInstance().d(TAG, "Lyricon disconnected")
+                if (started) {
+                    scheduleReconnect()
+                }
+            }
         }
 
         override fun onConnectTimeout(subscriber: LyriconSubscriber) {
-            AppLogger.getInstance().w(TAG, "Lyricon connection timed out")
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                AppLogger.getInstance().w(TAG, "Lyricon connection timed out — scheduling retry in ${retryDelayMs}ms")
+                scheduleReconnect()
+            }
         }
     }
 
-    private val activePlayerListener = object : ActivePlayerListener {
+    private fun createActivePlayerListener(generation: Long) = object : ActivePlayerListener {
         override fun onActiveProviderChanged(providerInfo: ProviderInfo?) {
-            activeProviderInfo = providerInfo
-            if (providerInfo == null) {
-                lastLyric = ""
-                AppLogger.getInstance().d(TAG, "No active Lyricon provider")
-            } else {
-                AppLogger.getInstance().d(
-                    TAG,
-                    "Active Lyricon provider: provider=${providerInfo.providerPackageName}, player=${providerInfo.playerPackageName}"
-                )
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                val changed = providerInfo == null || providerInfo != activeProviderInfo
+                activeProviderInfo = providerInfo
+                if (changed) {
+                    latestSong = null
+                    isPlainTextMode = false
+                    lastPublishedTextKey = null
+                    lastPositionMs = -1L
+                }
+                if (providerInfo == null) {
+                    AppLogger.getInstance().d(TAG, "No active Lyricon provider")
+                } else {
+                    AppLogger.getInstance().d(
+                        TAG,
+                        "Active Lyricon provider: provider=${providerInfo.providerPackageName}, player=${providerInfo.playerPackageName}"
+                    )
+                }
             }
         }
 
         override fun onSongChanged(song: Song?) {
-            if (song == null) {
-                lastLyric = ""
-                return
-            }
-
-            val pkg = resolvePackageName() ?: resolveFallbackPackageName() ?: run {
-                AppLogger.getInstance().d(TAG, "onSongChanged: no active player package — skipped")
-                return
-            }
-            val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
-                ?: ParserRuleHelper.createDefaultRule(pkg)
-            if (!rule.useLyriconApi) {
-                AppLogger.getInstance().d(TAG, "[$pkg] Lyricon disabled by rule — skipped")
-                return
-            }
-            if (!matchesCurrentSession(pkg, song)) return
-
-            val parsedLines = convertSong(song)
-            if (parsedLines.isEmpty()) {
-                AppLogger.getInstance().d(TAG, "[$pkg] Lyricon song has no structured lyric lines")
-                return
-            }
-
-            val sidecars = buildSidecars(
-                song = song,
-                receiveTranslation = rule.receiveLyriconTranslation,
-                receiveRomanization = rule.receiveLyriconRomanization
-            )
-            val linesWithSidecars = if (sidecars.isEmpty()) {
-                parsedLines
-            } else {
-                parsedLines.map { line ->
-                    val values = sidecars[line.text]
-                    line.copy(
-                        translation = values?.first ?: line.translation,
-                        roma = values?.second ?: line.roma
-                    )
-                }
-            }
-
-            val firstLine = parsedLines.firstOrNull { it.text.isNotBlank() } ?: return
-            val firstSidecar = sidecars[firstLine.text]
-            val appName = getAppName(pkg)
-            val hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() }
-
-            mainHandler.post {
-                LyricRepository.getInstance().updateLyric(
-                    lyric = firstLine.text,
-                    app = appName,
-                    apiPath = "Lyricon",
-                    translation = firstSidecar?.first,
-                    roma = firstSidecar?.second
-                )
-                LyricRepository.getInstance().updateParsedLyrics(
-                    lines = linesWithSidecars,
-                    hasSyllable = hasSyllable,
-                    sourceLabel = appName,
-                    apiPath = "Lyricon",
-                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
-                )
-                AppLogger.getInstance().d(
-                    TAG,
-                    "Lyricon structured lyrics imported: ${parsedLines.size} lines, syllable=$hasSyllable"
-                )
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                latestSong = song
+                isPlainTextMode = false
+                lastPublishedTextKey = null
+                if (song == null) return@onMain
+                applySongIfEligible(song)
             }
         }
 
         override fun onReceiveText(text: String?) {
-            val lyric = text.orEmpty().trim()
-            if (lyric.isBlank() || lyric == lastLyric) return
-
-            val pkg = resolvePackageName()
-                ?: resolveFallbackPackageName()
-                ?: LyricRepository.getInstance().liveMetadata.value?.packageName
-                ?: run {
-                    AppLogger.getInstance().d(TAG, "onReceiveText: no package — skipped")
-                    return
+            onMain {
+                if (!started || generation != sessionGeneration) return@onMain
+                latestSong = null
+                isPlainTextMode = true
+                if (text.isNullOrBlank()) {
+                    lastPublishedTextKey = null
+                    return@onMain
                 }
-            val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
-                ?: ParserRuleHelper.createDefaultRule(pkg)
-            if (!rule.useLyriconApi) {
-                AppLogger.getInstance().d(TAG, "[$pkg] Lyricon disabled by rule — skipped")
-                return
-            }
-            if (!matchesCurrentPackage(pkg)) return
-
-            lastLyric = lyric
-            mainHandler.post {
-                LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "Lyricon")
+                applyPlainTextIfEligible(text)
             }
         }
 
         override fun onPlaybackStateChanged(isPlaying: Boolean) = Unit
 
-        override fun onPositionChanged(position: Long) = Unit
+        override fun onPositionChanged(position: Long) {
+            lastPositionMs = position.coerceAtLeast(0L)
+        }
 
-        override fun onSeekTo(position: Long) = Unit
+        override fun onSeekTo(position: Long) {
+            val pos = position.coerceAtLeast(0L)
+            lastPositionMs = pos
+            onMain {
+                if (!started || generation != sessionGeneration || isPlainTextMode) return@onMain
+                val repo = LyricRepository.getInstance()
+                val parsed = repo.liveParsedLyrics.value
+                if (parsed?.apiPath != API_PATH || parsed.lines.isEmpty()) return@onMain
+
+                val activeLine = LyriconMapper.findActiveLine(parsed.lines, pos)
+                repo.updateCurrentLine(activeLine)
+                if (activeLine != null) {
+                    val pkg = repo.liveMetadata.value?.packageName
+                        ?: resolvePackageName()
+                        ?: resolveFallbackPackageName()
+                    val appName = pkg?.let(::getAppName) ?: parsed.sourceLabel ?: API_PATH
+                    repo.updateLyric(
+                        lyric = activeLine.text,
+                        app = appName,
+                        apiPath = API_PATH,
+                        translation = activeLine.translation,
+                        roma = activeLine.roma,
+                        receiveTranslation = parsed.receiveTranslation,
+                        receiveRomanization = parsed.receiveRomanization
+                    )
+                }
+            }
+        }
 
         override fun onDisplayTranslationChanged(isDisplayTranslation: Boolean) = Unit
 
         override fun onDisplayRomaChanged(isDisplayRoma: Boolean) = Unit
     }
 
-    fun start() {
-        if (started) return
+    private var activeConnectionListener: ConnectionListener? = null
+    private var activePlayerListener: ActivePlayerListener? = null
+
+    fun start(): Unit = onMain {
+        if (started) return@onMain
         if (!ParserRuleHelper.hasEnabledLyriconRule(context)) {
             AppLogger.getInstance().log(TAG, "LyriconSource skipped — no enabled parser rule uses Lyricon")
-            return
+            return@onMain
         }
+        started = true
+        retryDelayMs = INITIAL_RETRY_MS
+        openSubscriber()
+    }
 
+    fun stop(): Unit = onMain {
+        mainHandler.removeCallbacks(reconnectRunnable)
+        started = false
+        sessionGeneration++
+        closeSubscriber()
+        resetActiveFeedState()
+        AppLogger.getInstance().log(TAG, "LyriconSource stopped")
+    }
+
+    fun onTrackChanged(): Unit = onMain {
+        lastPublishedTextKey = null
+        lastPositionMs = -1L
+        if (!started) return@onMain
+        val cachedSong = latestSong ?: return@onMain
+        if (!isPlainTextMode) {
+            applySongIfEligible(cachedSong)
+        }
+    }
+
+    private fun openSubscriber() {
+        closeSubscriber()
+        val generation = ++sessionGeneration
         val created = try {
             LyriconFactory.createSubscriber(context.applicationContext)
         } catch (t: Throwable) {
             AppLogger.getInstance().e(TAG, "Failed to create Lyricon subscriber", t)
+            scheduleReconnect()
             return
         }
 
+        val connListener = createConnectionListener(generation)
+        val playerListener = createActivePlayerListener(generation)
         subscriber = created
-        created.addConnectionListener(connectionListener)
-        subscribed = created.subscribeActivePlayer(activePlayerListener)
+        activeConnectionListener = connListener
+        activePlayerListener = playerListener
+
+        created.addConnectionListener(connListener)
+        subscribed = created.subscribeActivePlayer(playerListener)
         if (!subscribed) {
             AppLogger.getInstance().w(TAG, "Lyricon active-player subscription was not accepted")
         }
 
-        started = true
         try {
             created.register()
             AppLogger.getInstance().log(TAG, "LyriconSource started — subscriber registered")
         } catch (t: Throwable) {
             AppLogger.getInstance().e(TAG, "Failed to register Lyricon subscriber", t)
+            scheduleReconnect()
         }
     }
 
-    fun stop() {
-        val current = subscriber ?: return
+    private fun closeSubscriber() {
+        val current = subscriber
+        val connListener = activeConnectionListener
+        val playerListener = activePlayerListener
+        subscriber = null
+        activeConnectionListener = null
+        activePlayerListener = null
+        val wasSubscribed = subscribed
+        subscribed = false
+
+        if (current == null) return
         try {
-            if (subscribed) {
-                current.unsubscribeActivePlayer(activePlayerListener)
+            if (wasSubscribed && playerListener != null) {
+                current.unsubscribeActivePlayer(playerListener)
             }
             current.unregister()
-            current.removeConnectionListener(connectionListener)
+            if (connListener != null) {
+                current.removeConnectionListener(connListener)
+            }
             current.destroy()
         } catch (t: Throwable) {
             AppLogger.getInstance().e(TAG, "Failed to stop Lyricon subscriber", t)
-        } finally {
-            subscriber = null
-            started = false
-            subscribed = false
-            activeProviderInfo = null
-            lastLyric = ""
-            AppLogger.getInstance().log(TAG, "LyriconSource stopped")
         }
     }
 
-    private fun convertSong(song: Song): List<OnlineLyricFetcher.LyricLine> {
-        return song.lyrics.orEmpty()
-            .mapNotNull(::convertLine)
-            .sortedBy { it.startTime }
+    private fun reconnectSubscriber() {
+        if (!started) return
+        openSubscriber()
     }
 
-    private fun convertLine(line: RichLyricLine): OnlineLyricFetcher.LyricLine? {
-        val text = line.text.orEmpty().ifBlank {
-            line.words.orEmpty().joinToString("") { it.text.orEmpty() }
-        }.trim()
-        if (text.isBlank()) return null
+    private fun scheduleReconnect() {
+        if (!started) return
+        mainHandler.removeCallbacks(reconnectRunnable)
+        mainHandler.postDelayed(reconnectRunnable, retryDelayMs)
+        retryDelayMs = (retryDelayMs * 2).coerceAtMost(MAX_RETRY_MS)
+    }
 
-        val syllables = line.words.orEmpty()
-            .mapNotNull { word ->
-                val wordText = word.text.orEmpty()
-                if (wordText.isBlank() || word.end <= word.begin) {
-                    null
-                } else {
-                    OnlineLyricFetcher.SyllableInfo(
-                        startTime = word.begin,
-                        endTime = word.end,
-                        text = wordText
-                    )
-                }
+    private fun resetActiveFeedState() {
+        activeProviderInfo = null
+        latestSong = null
+        isPlainTextMode = false
+        lastPublishedTextKey = null
+        lastPositionMs = -1L
+    }
+
+    private fun applySongIfEligible(song: Song) {
+        val pkg = resolvePackageName() ?: resolveFallbackPackageName() ?: run {
+            AppLogger.getInstance().d(TAG, "onSongChanged: no active player package — skipped")
+            return
+        }
+        val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
+            ?: ParserRuleHelper.createDefaultRule(pkg)
+        if (!rule.enabled || !rule.useLyriconApi) {
+            AppLogger.getInstance().d(TAG, "[$pkg] Lyricon disabled by rule — skipped")
+            return
+        }
+
+        val repo = LyricRepository.getInstance()
+        val liveMeta = repo.liveMetadata.value
+        if (liveMeta != null) {
+            val track = LyriconTrack(
+                packageName = liveMeta.packageName,
+                title = liveMeta.title,
+                artist = liveMeta.artist,
+                rawTitle = liveMeta.rawTitle,
+                rawArtist = liveMeta.rawArtist,
+                mediaId = liveMeta.mediaId
+            )
+            val playerPkg = activeProviderInfo?.playerPackageName?.takeIf { it.isNotBlank() } ?: pkg
+            if (!LyriconMapper.matchesSession(playerPkg, song, track)) {
+                AppLogger.getInstance().d(
+                    TAG,
+                    "[$pkg] Lyricon song ignored — mismatch with current session (${liveMeta.title} - ${liveMeta.artist}) vs (${song.name} - ${song.artist})"
+                )
+                return
             }
-            .takeIf { it.isNotEmpty() }
-
-        val start = when {
-            line.begin > 0L -> line.begin
-            !syllables.isNullOrEmpty() -> syllables.first().startTime
-            else -> 0L
-        }
-        val end = when {
-            line.end > start -> line.end
-            !syllables.isNullOrEmpty() -> syllables.last().endTime
-            else -> start + line.duration.coerceAtLeast(DEFAULT_LINE_DURATION_MS)
         }
 
-        return OnlineLyricFetcher.LyricLine(
-            startTime = start,
-            endTime = maxOf(end, start + 1L),
-            text = text,
-            syllables = syllables
+        val parsedLines = LyriconMapper.convertSong(
+            song = song,
+            receiveTranslation = rule.receiveLyriconTranslation,
+            receiveRomanization = rule.receiveLyriconRomanization
+        )
+        if (parsedLines.isEmpty()) {
+            AppLogger.getInstance().d(TAG, "[$pkg] Lyricon song has no structured lyric lines")
+            return
+        }
+
+        val appName = getAppName(pkg)
+        val hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() }
+
+        repo.updateParsedLyrics(
+            lines = parsedLines,
+            hasSyllable = hasSyllable,
+            sourceLabel = appName,
+            apiPath = API_PATH,
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+            receiveTranslation = rule.receiveLyriconTranslation,
+            receiveRomanization = rule.receiveLyriconRomanization
+        )
+
+        val effectivePositionMs = lastPositionMs.takeIf { it >= 0L }
+            ?: repo.liveProgress.value?.position
+            ?: 0L
+        val activeLine = LyriconMapper.findActiveLine(parsedLines, effectivePositionMs)
+        repo.updateCurrentLine(activeLine)
+        if (activeLine != null) {
+            repo.updateLyric(
+                lyric = activeLine.text,
+                app = appName,
+                apiPath = API_PATH,
+                translation = activeLine.translation,
+                roma = activeLine.roma,
+                receiveTranslation = rule.receiveLyriconTranslation,
+                receiveRomanization = rule.receiveLyriconRomanization
+            )
+        }
+        AppLogger.getInstance().d(
+            TAG,
+            "Lyricon structured lyrics imported: ${parsedLines.size} lines, syllable=$hasSyllable, pos=${effectivePositionMs}ms"
         )
     }
 
-    private fun buildSidecars(
-        song: Song,
-        receiveTranslation: Boolean,
-        receiveRomanization: Boolean
-    ): Map<String, Pair<String?, String?>> {
-        if (!receiveTranslation && !receiveRomanization) return emptyMap()
-        return song.lyrics.orEmpty()
-            .mapNotNull { line ->
-                val text = richText(line).takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val translation = if (receiveTranslation) {
-                    line.translation.orEmpty().ifBlank {
-                        line.translationWords.orEmpty().joinToString("") { it.text.orEmpty() }
-                    }.takeIf { it.isNotBlank() }
-                } else {
-                    null
-                }
-                val roma = if (receiveRomanization) {
-                    line.roma.orEmpty().ifBlank {
-                        line.secondary.orEmpty().ifBlank {
-                            line.secondaryWords.orEmpty().joinToString("") { it.text.orEmpty() }
-                        }
-                    }.takeIf { it.isNotBlank() }
-                } else {
-                    null
-                }
-                if (translation == null && roma == null) null else text to (translation to roma)
+    private fun applyPlainTextIfEligible(rawText: String) {
+        val repo = LyricRepository.getInstance()
+        val pkg = resolvePackageName()
+            ?: resolveFallbackPackageName()
+            ?: repo.liveMetadata.value?.packageName
+            ?: run {
+                AppLogger.getInstance().d(TAG, "onReceiveText: no package — skipped")
+                return
             }
-            .toMap()
-    }
-
-    private fun richText(line: RichLyricLine): String {
-        return line.text.orEmpty().ifBlank {
-            line.words.orEmpty().joinToString("") { it.text.orEmpty() }
-        }.trim()
-    }
-
-    private fun matchesCurrentSession(pkg: String, song: Song): Boolean {
-        if (!matchesCurrentPackage(pkg)) return false
-
-        val liveMeta = LyricRepository.getInstance().liveMetadata.value ?: return true
-        val songTitle = song.name.orEmpty()
-        val songArtist = song.artist.orEmpty()
-        val titleMatches = songTitle.isBlank() || liveMeta.title.isBlank() ||
-                songTitle.equals(liveMeta.title, ignoreCase = true)
-        val artistMatches = songArtist.isBlank() || liveMeta.artist.isBlank() ||
-                songArtist.equals(liveMeta.artist, ignoreCase = true)
-
-        if (!titleMatches || !artistMatches) {
-            AppLogger.getInstance().d(
-                TAG,
-                "[$pkg] Lyricon song ignored — mismatch with current session (${liveMeta.title} - ${liveMeta.artist}) vs ($songTitle - $songArtist)"
-            )
-            return false
+        val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
+            ?: ParserRuleHelper.createDefaultRule(pkg)
+        if (!rule.enabled || !rule.useLyriconApi) {
+            AppLogger.getInstance().d(TAG, "[$pkg] Lyricon disabled by rule — skipped")
+            return
         }
-        return true
-    }
-
-    private fun matchesCurrentPackage(pkg: String): Boolean {
-        val livePkg = LyricRepository.getInstance().liveMetadata.value?.packageName
+        val livePkg = repo.liveMetadata.value?.packageName
         if (!livePkg.isNullOrBlank() && pkg != livePkg) {
             AppLogger.getInstance().d(TAG, "[$pkg] Lyricon ignored — mismatch with current session [$livePkg]")
-            return false
+            return
         }
-        return true
+
+        val parsedText = LyriconMapper.parseReceiveText(
+            rawText = rawText,
+            receiveTranslation = rule.receiveLyriconTranslation
+        ) ?: run {
+            lastPublishedTextKey = null
+            return
+        }
+
+        val dedupKey = parsedText.mainLyric to parsedText.translation
+        if (dedupKey == lastPublishedTextKey) return
+        lastPublishedTextKey = dedupKey
+
+        if (repo.liveParsedLyrics.value?.apiPath == API_PATH) {
+            repo.updateParsedLyrics(
+                lines = emptyList(),
+                hasSyllable = false,
+                timelineCapability = LyricRepository.TimelineCapability.NONE
+            )
+            repo.updateCurrentLine(null)
+        }
+
+        repo.updateLyric(
+            lyric = parsedText.mainLyric,
+            app = getAppName(pkg),
+            apiPath = API_PATH,
+            translation = parsedText.translation,
+            roma = null,
+            receiveTranslation = rule.receiveLyriconTranslation,
+            receiveRomanization = rule.receiveLyriconRomanization
+        )
     }
 
     private fun resolvePackageName(): String? {
@@ -362,7 +445,8 @@ class LyriconSource(private val context: Context) {
         ).filterNotNull().filter { it.isNotBlank() }.distinct()
 
         return candidates.firstOrNull { pkg ->
-            ParserRuleHelper.getRuleForPackage(context, pkg)?.useLyriconApi == true
+            ParserRuleHelper.getRuleForPackage(context, pkg)
+                ?.let { it.enabled && it.useLyriconApi } == true
         } ?: candidates.firstOrNull()
     }
 
@@ -388,8 +472,18 @@ class LyriconSource(private val context: Context) {
         }
     }
 
+    private fun onMain(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            mainHandler.post(action)
+        }
+    }
+
     companion object {
         private const val TAG = "LyriconSource"
-        private const val DEFAULT_LINE_DURATION_MS = 5_000L
+        private const val API_PATH = "Lyricon"
+        private const val INITIAL_RETRY_MS = 5_000L
+        private const val MAX_RETRY_MS = 60_000L
     }
 }

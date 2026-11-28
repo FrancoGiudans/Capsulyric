@@ -16,6 +16,7 @@ import kotlin.math.abs
 internal data class LyricsPlaybackStart(
     val track: LyricRepository.MediaInfo,
     val lines: List<LyricLine>,
+    val writers: List<String> = emptyList(),
 ) {
     fun matches(candidate: LyricRepository.MediaInfo?): Boolean {
         if (candidate == null || candidate.packageName != track.packageName ||
@@ -34,6 +35,19 @@ internal fun LyricRepository.ParsedLyricsInfo?.playbackLines(): List<LyricLine> 
     } else {
         emptyList()
     }
+
+internal fun LyricRepository.ParsedLyricsInfo?.playbackWriters(): List<String> =
+    if (this?.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE) {
+        writers.map { it.trim() }.filter { it.isNotEmpty() }
+    } else {
+        emptyList()
+    }
+
+internal fun formatPlaybackWriters(writers: List<String>): String? {
+    val cleaned = writers.map { it.trim() }.filter { it.isNotEmpty() }
+    if (cleaned.isEmpty()) return null
+    return "Written by: ${cleaned.joinToString(", ")}"
+}
 
 private fun LyricLine.isTimedLyric() = startTime >= 0 && !SecondaryTextResolver.isPlaceholder(text)
 

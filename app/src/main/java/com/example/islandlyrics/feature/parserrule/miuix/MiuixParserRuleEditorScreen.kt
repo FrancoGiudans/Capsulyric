@@ -23,9 +23,11 @@
 package com.example.islandlyrics.feature.parserrule.miuix
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
@@ -98,6 +101,9 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import androidx.compose.ui.platform.LocalLayoutDirection
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 
 @Composable
 fun MiuixParserRuleEditorScreen(
@@ -107,9 +113,12 @@ fun MiuixParserRuleEditorScreen(
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
     onSaved: (ParserRule) -> Unit,
-    onOpenFaq: (() -> Unit)? = null
+    onOpenFaq: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
@@ -178,15 +187,19 @@ fun MiuixParserRuleEditorScreen(
                     else -> stringResource(R.string.parser_edit)
                 },
                 scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            onBack()
-                        },
-                        modifier = Modifier.padding(start = 12.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(
+                            onClick = {
+                                onBack()
+                            },
+                            modifier = Modifier.padding(start = 12.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        }
                     }
+                } else {
+                    {}
                 },
                 actions = {
                     val menuItems = buildList {
@@ -242,12 +255,18 @@ fun MiuixParserRuleEditorScreen(
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .miuixPageScroll(scrollBehavior)
-                .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
+                .padding(padding.adaptiveContentPadding(layoutDirection)),
+            contentAlignment = Alignment.TopCenter
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = layoutInfo.maxReadableWidth)
         ) {
             if (!isTemplate) {
                 SmallTitle(text = stringResource(R.string.parser_app_info))
@@ -309,6 +328,7 @@ fun MiuixParserRuleEditorScreen(
                 Text(stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule))
             }
             Spacer(modifier = Modifier.height(24.dp))
+        }
         }
 
         if (showOnlineSuggestionDialog) {
@@ -779,6 +799,7 @@ fun MiuixLyriconSourceConfigPage(
     onStateChange: (ParserRuleEditorState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         Spacer(modifier = Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -793,6 +814,24 @@ fun MiuixLyriconSourceConfigPage(
                 summary = stringResource(R.string.parser_lyricon_romanization_desc),
                 checked = state.receiveLyriconRomanization,
                 onCheckedChange = { onStateChange(state.copy(receiveLyriconRomanization = it)) }
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            SuperArrow(
+                title = stringResource(R.string.parser_lyricon_core_service_title),
+                summary = stringResource(R.string.parser_lyricon_core_service_desc),
+                onClick = {
+                    try {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/tomakino/lyricon/releases/tag/core")
+                            )
+                        )
+                    } catch (_: Exception) {
+                    }
+                }
             )
         }
     }

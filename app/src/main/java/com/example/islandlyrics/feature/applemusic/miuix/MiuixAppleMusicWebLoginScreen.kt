@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +45,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.applemusic.AppleMusicWebLoginHelper
 import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlinx.coroutines.Dispatchers
@@ -110,25 +112,35 @@ fun MiuixAppleMusicWebLoginScreen(onBack: () -> Unit, onDone: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
+        val layoutInfo = LocalAppWindowLayout.current
+        val verticalPad = if (layoutInfo.isShortHeight) 8.dp else 16.dp
+        val itemGap = if (layoutInfo.isShortHeight) 8.dp else 12.dp
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding),
+            contentAlignment = androidx.compose.ui.Alignment.TopCenter
         ) {
-            Text(
-                text = stringResource(statusRes),
-                color = MiuixTheme.colorScheme.onSurfaceSecondary
-            )
-            AndroidView(
-                factory = { webView },
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            )
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.apple_music_web_login_done))
+                    .fillMaxSize()
+                    .widthIn(max = 960.dp)
+                    .padding(horizontal = 16.dp, vertical = verticalPad),
+                verticalArrangement = Arrangement.spacedBy(itemGap)
+            ) {
+                Text(
+                    text = stringResource(statusRes),
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
+                AndroidView(
+                    factory = { webView },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
+                Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.apple_music_web_login_done))
+                }
             }
         }
     }

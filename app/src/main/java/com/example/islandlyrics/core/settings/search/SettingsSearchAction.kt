@@ -76,5 +76,6 @@ enum class MainSettingsDialogType {
     HIDE_LAUNCHER,
     BACKUP_EXPORT,
     BACKUP_IMPORT,
+    IMPORT_OTHER_APPS,
     LANGUAGE_PICKER
 }

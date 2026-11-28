@@ -70,7 +70,7 @@ fun <T> PageStackHost(
     val prefs = remember {
         AppPreferences.of(context)
     }
-    val displayedStack = remember { mutableStateListOf<T>() }
+    val displayedStack = remember { mutableStateListOf<T>().apply { addAll(stack) } }
     val transitionProgress = remember { Animatable(1f) }
     val targetKeys = stack.map(key)
     val currentOnPop by rememberUpdatedState(onPop)

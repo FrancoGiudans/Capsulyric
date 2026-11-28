@@ -24,6 +24,7 @@ package com.example.islandlyrics.feature.settings.material
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,13 +58,18 @@ import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommunityScreen(onBack: () -> Unit) {
+fun CommunityScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
@@ -88,64 +94,78 @@ fun CommunityScreen(onBack: () -> Unit) {
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.settings_community_header)) },
                 navigationIcon = {
-                    IconButton(onClick = { onBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = { onBack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                top = paddingValues.calculateTopPadding(),
-                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
-                bottom = paddingValues.calculateBottomPadding() + 24.dp,
-            )
-        ) {
-            item {
-                SettingsCard {
-                    if (!offlineModeEnabled) {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            SettingsTextItem(
-                                title = stringResource(R.string.diag_lab_feed_source_title),
-                                value = if (feedSourcePriority == LabFeatureManager.FEED_SOURCE_GITEE) {
-                                    stringResource(R.string.diag_lab_feed_source_gitee)
-                                } else {
-                                    stringResource(R.string.diag_lab_feed_source_github)
-                                },
-                                onClick = { showFeedSourceDropdown = true }
-                            )
-                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                                MaterialBlurDropdownMenu(
-                                    expanded = showFeedSourceDropdown,
-                                    onDismissRequest = { showFeedSourceDropdown = false }
-                                ) {
-                                    listOf(
-                                        LabFeatureManager.FEED_SOURCE_GITHUB to stringResource(R.string.diag_lab_feed_source_github),
-                                        LabFeatureManager.FEED_SOURCE_GITEE to stringResource(R.string.diag_lab_feed_source_gitee)
-                                    ).forEach { (sourceKey, sourceLabel) ->
-                                        DropdownMenuItem(
-                                            text = { Text(sourceLabel) },
-                                            onClick = {
-                                                feedSourcePriority = sourceKey
-                                                LabFeatureManager.setFeedSourcePriority(context, sourceKey)
-                                                showFeedSourceDropdown = false
-                                            }
-                                        )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
+                item {
+                    SettingsCard {
+                        if (!offlineModeEnabled) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                SettingsTextItem(
+                                    title = stringResource(R.string.diag_lab_feed_source_title),
+                                    value = if (feedSourcePriority == LabFeatureManager.FEED_SOURCE_GITEE) {
+                                        stringResource(R.string.diag_lab_feed_source_gitee)
+                                    } else {
+                                        stringResource(R.string.diag_lab_feed_source_github)
+                                    },
+                                    onClick = { showFeedSourceDropdown = true }
+                                )
+                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
+                                    MaterialBlurDropdownMenu(
+                                        expanded = showFeedSourceDropdown,
+                                        onDismissRequest = { showFeedSourceDropdown = false }
+                                    ) {
+                                        listOf(
+                                            LabFeatureManager.FEED_SOURCE_GITHUB to stringResource(R.string.diag_lab_feed_source_github),
+                                            LabFeatureManager.FEED_SOURCE_GITEE to stringResource(R.string.diag_lab_feed_source_gitee)
+                                        ).forEach { (sourceKey, sourceLabel) ->
+                                            DropdownMenuItem(
+                                                text = { Text(sourceLabel) },
+                                                onClick = {
+                                                    feedSourcePriority = sourceKey
+                                                    LabFeatureManager.setFeedSourcePriority(context, sourceKey)
+                                                    showFeedSourceDropdown = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
+                            SettingsCardDivider()
                         }
-                        SettingsCardDivider()
+                        CommunitySection(
+                            communityFeed = communityFeed,
+                            communityFeedLoaded = communityFeedLoaded,
+                            onCommunityItemClick = { communityDialogState = it }
+                        )
                     }
-                    CommunitySection(
-                        communityFeed = communityFeed,
-                        communityFeedLoaded = communityFeedLoaded,
-                        onCommunityItemClick = { communityDialogState = it }
-                    )
                 }
             }
         }

@@ -49,6 +49,8 @@ import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
@@ -78,7 +80,8 @@ import kotlinx.coroutines.delay
 internal fun MiuixLabScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
-    onOpenCapsuleNotification: (() -> Unit)? = null
+    onOpenCapsuleNotification: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { AppPreferences.of(context) }
@@ -101,7 +104,15 @@ internal fun MiuixLabScreen(
     }
     LaunchedEffect(targetItemKey) {
         if (targetItemKey != null) {
-            delay(120)
+            val cardIndex = when (targetItemKey) {
+                "key_full_offline_mode" -> 2
+                "key_lyric_visual_center" -> 5
+                else -> null
+            }
+            if (cardIndex != null) {
+                listState.animateScrollToItem(cardIndex)
+            }
+            delay(150)
             targetBringIntoViewRequester.bringIntoView()
         }
     }
@@ -156,24 +167,39 @@ internal fun MiuixLabScreen(
                 largeTitle = stringResource(R.string.title_lab),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            )
-        ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                )
+            ) {
             item {
                 Text(
                     text = stringResource(R.string.diag_lab_page_desc),
@@ -189,6 +215,7 @@ internal fun MiuixLabScreen(
                         title = stringResource(R.string.settings_full_offline_mode),
                         summary = stringResource(R.string.settings_full_offline_mode_desc),
                         checked = offlineModeEnabled,
+                        modifier = targetModifier("key_full_offline_mode"),
                         onCheckedChange = { enabled ->
                             if (enabled) {
                                 showOfflineModeDialog.value = true
@@ -310,6 +337,7 @@ internal fun MiuixLabScreen(
 
                 }
             }
+        }
         }
 
         MiuixBlurBottomSheet(

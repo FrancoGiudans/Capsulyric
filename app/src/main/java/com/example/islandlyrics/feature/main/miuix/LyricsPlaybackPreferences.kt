@@ -23,6 +23,8 @@ internal enum class LyricsPlaybackPreference(private val key: String, private va
     HideSystemBars(AppPreferences.Keys.FULLSCREEN_PLAYBACK_HIDE_SYSTEM_BARS),
     AutoHideControls(AppPreferences.Keys.FULLSCREEN_PLAYBACK_AUTO_HIDE_CONTROLS),
     AutoFollow(AppPreferences.Keys.FULLSCREEN_PLAYBACK_AUTO_FOLLOW, true),
+    ShowWriters(AppPreferences.Keys.FULLSCREEN_PLAYBACK_SHOW_WRITERS, true),
+    DuetAlignment(AppPreferences.Keys.FULLSCREEN_PLAYBACK_DUET_ALIGNMENT, true),
     Translation(AppPreferences.Keys.FULLSCREEN_PLAYBACK_TRANSLATION),
     Romanization(AppPreferences.Keys.FULLSCREEN_PLAYBACK_ROMANIZATION);
 

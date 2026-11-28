@@ -75,10 +75,10 @@ internal object MusixmatchRichsyncParser {
         }
         if (segments.isEmpty()) return null
 
-        // 空格段并入前段（StandardizeMusixmatchLyrics 等价行为）
+        // 空白段并入前段（对齐上游 StandardizeMusixmatchLyrics：空白作为词边界附加到前一音节）
         val merged = mutableListOf<Pair<String, Long>>()
         for ((text, start) in segments) {
-            if (text == " " && merged.isNotEmpty()) {
+            if (text.isNotEmpty() && text.all(Char::isWhitespace) && merged.isNotEmpty()) {
                 val (prevText, prevStart) = merged.removeAt(merged.size - 1)
                 merged.add((prevText + text) to prevStart)
             } else {

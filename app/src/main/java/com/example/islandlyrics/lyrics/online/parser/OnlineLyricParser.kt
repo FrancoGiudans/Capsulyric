@@ -335,7 +335,50 @@ internal object OnlineLyricParser {
         return Regex("""\[\d{2}:\d{2}\.\d{2,3}]""").containsMatchIn(content)
     }
 
-    internal fun parseTtmlLyrics(ttmlContent: String): List<OnlineLyricFetcher.LyricLine> {
+    /**
+     * 判断歌词是否为纯音乐/伴奏提示行（对齐上游 `InstrumentalHelper.cs`）。
+     */
+    internal fun isInstrumentalLyrics(
+        parsedLines: List<OnlineLyricFetcher.LyricLine>?,
+        rawLyrics: String? = null
+    ): Boolean {
+        if (parsedLines?.size == 1 && isInstrumentalPromptText(parsedLines[0].text)) {
+            return true
+        }
+        val raw = rawLyrics.orEmpty()
+        if (raw.contains("纯音乐", ignoreCase = true) || raw.contains("No lyrics", ignoreCase = true)) {
+            return true
+        }
+        return INSTRUMENTAL_PROMPTS.any { raw.contains(it) }
+    }
+
+    internal fun isInstrumentalPromptText(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        val simplified = LyricChineseNormalizer.toSimplified(text).trim()
+        if (simplified in INSTRUMENTAL_PROMPTS) return true
+        return simplified.contains("纯音乐") ||
+            simplified.equals("no lyrics", ignoreCase = true) ||
+            (simplified.contains("没有填词") && simplified.contains("请您欣赏"))
+    }
+
+    private val INSTRUMENTAL_PROMPTS = setOf(
+        "纯音乐，请欣赏",
+        "纯音乐,请欣赏",
+        "此歌曲为没有填词的纯音乐，请您欣赏",
+        "此歌曲为DJ舞曲，请您欣赏",
+        "此歌曲为没有填词的DJ舞曲，请您欣赏"
+    )
+
+    internal fun parseTtmlDocument(ttmlContent: String): TtmlParser.TtmlParseResult {
+        val domResult = TtmlParser.parse(ttmlContent)
+        if (domResult.lines.isNotEmpty()) return domResult
+        return TtmlParser.TtmlParseResult(lines = parseTtmlLyricsRegexFallback(ttmlContent))
+    }
+
+    internal fun parseTtmlLyrics(ttmlContent: String): List<OnlineLyricFetcher.LyricLine> =
+        parseTtmlDocument(ttmlContent).lines
+
+    private fun parseTtmlLyricsRegexFallback(ttmlContent: String): List<OnlineLyricFetcher.LyricLine> {
         val lines = mutableListOf<OnlineLyricFetcher.LyricLine>()
         val lineRegex = Regex("<p\\b([^>]*)>(.*?)</p>", DOT_MATCHES_ALL)
         val spanRegex = Regex("<span\\b([^>]*)>(.*?)</span>", DOT_MATCHES_ALL)

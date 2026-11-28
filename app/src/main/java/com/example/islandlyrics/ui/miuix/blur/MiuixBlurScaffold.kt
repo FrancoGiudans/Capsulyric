@@ -39,7 +39,11 @@ package com.example.islandlyrics.ui.miuix.blur
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
@@ -53,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
 import top.yukonga.miuix.kmp.basic.FabPosition
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -101,6 +106,15 @@ fun MiuixBlurScaffold(
         drawRect(backdropBackground)
         drawContent()
     }
+    val hasStartRail = LocalAdaptiveHasStartRail.current
+    val effectiveWindowInsets = if (hasStartRail) {
+        contentWindowInsets.exclude(
+            WindowInsets.displayCutout.only(WindowInsetsSides.Start)
+                .union(WindowInsets.navigationBars.only(WindowInsetsSides.Start))
+        )
+    } else {
+        contentWindowInsets
+    }
     
     CompositionLocalProvider(
         LocalMiuixBlurBackdrop provides backdrop,
@@ -114,7 +128,7 @@ fun MiuixBlurScaffold(
             floatingActionButton = floatingActionButton,
             floatingActionButtonPosition = floatingActionButtonPosition,
             containerColor = containerColor,
-            contentWindowInsets = contentWindowInsets,
+            contentWindowInsets = effectiveWindowInsets,
             popupHost = popupHost
         ) { paddingValues ->
             Box(modifier = if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier) {

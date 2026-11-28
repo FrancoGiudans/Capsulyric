@@ -105,12 +105,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -129,6 +134,7 @@ fun CustomSettingsScreen(
     initialTab: CustomSettingsTab? = null,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -163,9 +169,11 @@ fun CustomSettingsScreen(
         }
     }
 
-    val targetTab = initialTab ?: if (orderedTabs.size == 1) orderedTabs.firstOrNull() else null
-    LaunchedEffect(targetItemKey, pagerState.currentPage) {
-        if (targetItemKey != null && (targetTab == null || orderedTabs.getOrNull(pagerState.currentPage) == targetTab)) {
+    var pendingHighlightTab by remember(initialTab, orderedTabs) {
+        mutableStateOf(initialTab ?: if (orderedTabs.size == 1) orderedTabs.firstOrNull() else null)
+    }
+    LaunchedEffect(activeHighlightKey, pagerState.currentPage, pendingHighlightTab) {
+        if (activeHighlightKey != null && (pendingHighlightTab == null || orderedTabs.getOrNull(pagerState.currentPage) == pendingHighlightTab)) {
             delay(120)
             targetBringIntoViewRequester.bringIntoView()
         }
@@ -187,6 +195,8 @@ fun CustomSettingsScreen(
 
     fun handleNavigate(action: SettingsSearchAction.Navigate) {
         if (action.tab != null && orderedTabs.contains(action.tab)) {
+            pendingHighlightTab = action.tab
+            activeHighlightKey = action.targetItemKey
             scope.launch {
                 pagerState.animateScrollToPage(orderedTabs.indexOf(action.tab))
             }
@@ -488,6 +498,14 @@ fun CustomSettingsScreen(
         }
     }
 
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
+    val hasStartRail = LocalAdaptiveHasStartRail.current
+    val twoPanePreview = layoutInfo.useTwoPanePreview
+    val tabCutoutInsets = WindowInsets.displayCutout.only(
+        if (hasStartRail) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+    )
+
     AppTheme(
         darkTheme = useDarkTheme,
         dynamicColor = dynamicColor,
@@ -501,8 +519,10 @@ fun CustomSettingsScreen(
                     MaterialBlurTopAppBar(
                         title = { Text(title) },
                         navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+                            if (showBackButton) {
+                                IconButton(onClick = onBack) {
+                                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+                                }
                             }
                         },
                     )
@@ -511,6 +531,7 @@ fun CustomSettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .windowInsetsPadding(tabCutoutInsets)
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -542,35 +563,68 @@ fun CustomSettingsScreen(
             },
             containerColor = materialPageContainerColor()
         ) { paddingValues ->
+            val singlePaneHorizontalExtra = if (
+                !twoPanePreview && layoutInfo.widthDp > layoutInfo.maxReadableWidth
+            ) {
+                (layoutInfo.widthDp - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.padding(paddingValues).fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             ) { page ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(pageScrollStates[page])
-                ) {
-                    when (orderedTabs[page]) {
+                val currentTab = orderedTabs[page]
+                val capsulePreviewBlock: @Composable () -> Unit = {
+                    val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
+                    CapsulePreview(
+                        dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
+                        iconStyle = previewIconStyle,
+                        oneuiCapsuleColorMode = oneuiCapsuleColorMode,
+                        superIslandEnabled = superIslandEnabled,
+                        superIslandLyricMode = superIslandLyricMode,
+                        superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                        superIslandStandardShowLeftCover = superIslandStandardShowLeftCover,
+                        superIslandColorSource = superIslandColorSource,
+                        superIslandCustomColor = superIslandCustomColor,
+                        superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                        superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                        rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
+                            superIslandCollapsedRightProgressRing,
+                        showBorder = useDarkTheme
+                    )
+                }
+                val notificationPreviewBlock: @Composable () -> Unit = {
+                    NotificationPreview(
+                        progressColorEnabled = progressColorEnabled,
+                        actionStyle = effectiveActionStyle,
+                        superIslandEnabled = superIslandEnabled,
+                        superIslandColorSource = superIslandColorSource,
+                        superIslandCustomColor = superIslandCustomColor,
+                        superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                        superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                        superIslandMediaButtonLayout = superIslandMediaButtonLayout,
+                        superIslandNotificationStyle = superIslandNotificationStyle,
+                        superIslandLyricMode = superIslandLyricMode,
+                        superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                        showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
+                        template2PicSource = template2PicSource,
+                        showBorder = useDarkTheme,
+                        superIslandSecondaryTextModes = secondaryTextModes,
+                        template18SecondaryTextModes = superIslandTemplate18TextModes,
+                        template18ButtonAction = superIslandTemplate18ButtonAction,
+                        previewDarkTheme = useDarkTheme
+                    )
+                }
+
+                val tabSettingsContent: @Composable () -> Unit = {
+                    when (currentTab) {
                         CustomSettingsTab.CAPSULE -> { // Capsule (Moved from 1)
-                            val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
-                            CapsulePreview(
-                                dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
-                                iconStyle = previewIconStyle,
-                                oneuiCapsuleColorMode = oneuiCapsuleColorMode,
-                                superIslandEnabled = superIslandEnabled,
-                                superIslandLyricMode = superIslandLyricMode,
-                                superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                superIslandStandardShowLeftCover = superIslandStandardShowLeftCover,
-                                superIslandColorSource = superIslandColorSource,
-                                superIslandCustomColor = superIslandCustomColor,
-                                superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
-                                rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
-                                    superIslandCollapsedRightProgressRing,
-                                showBorder = useDarkTheme
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            if (!twoPanePreview) {
+                                capsulePreviewBlock()
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
 
                             if (superIslandEnabled) {
                                 SettingsCard {
@@ -854,6 +908,7 @@ fun CustomSettingsScreen(
                                             title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
                                             subtitle = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
                                             checked = superIslandFullLyricShowLeftCover,
+                                            modifier = settingModifier("key_super_island_show_left_cover"),
                                             onCheckedChange = {
                                                 superIslandFullLyricShowLeftCover = it
                                                 viewModel.dispatch(CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover(it))
@@ -1203,27 +1258,10 @@ fun CustomSettingsScreen(
                             }
                         }
                         CustomSettingsTab.NOTIFICATION -> { // Notification
-                             NotificationPreview(
-                                 progressColorEnabled = progressColorEnabled,
-                                 actionStyle = effectiveActionStyle,
-                                 superIslandEnabled = superIslandEnabled,
-                                 superIslandColorSource = superIslandColorSource,
-                                 superIslandCustomColor = superIslandCustomColor,
-                                 superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                 superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
-                                 superIslandMediaButtonLayout = superIslandMediaButtonLayout,
-                                 superIslandNotificationStyle = superIslandNotificationStyle,
-                                 superIslandLyricMode = superIslandLyricMode,
-                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                 showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
-                                 template2PicSource = template2PicSource,
-                                 showBorder = useDarkTheme,
-                                 superIslandSecondaryTextModes = secondaryTextModes,
-                                 template18SecondaryTextModes = superIslandTemplate18TextModes,
-                                 template18ButtonAction = superIslandTemplate18ButtonAction,
-                                 previewDarkTheme = useDarkTheme
-                             )
-                             Spacer(modifier = Modifier.height(16.dp))
+                            if (!twoPanePreview) {
+                                notificationPreviewBlock()
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
 
                             SettingsCard {
                             // 旧版「通知按键」仅保留给非超级岛（实时更新胶囊）使用
@@ -2002,9 +2040,15 @@ fun CustomSettingsScreen(
                             }
                         }
                         CustomSettingsTab.DESKTOP_LYRICS -> {
-                            FloatingLyricsSettingsSubScreen(prefs)
+                            FloatingLyricsSettingsSubScreen(
+                                prefs = prefs,
+                                settingModifier = { settingModifier(it) }
+                            )
                         }
                     }
+                }
+
+                val otherLinksBlock: @Composable () -> Unit = {
                     MaterialLookingForOtherSettings(
                         links = when (orderedTabs[page]) {
                             CustomSettingsTab.CAPSULE -> listOf(
@@ -2100,7 +2144,82 @@ fun CustomSettingsScreen(
                         onNavigate = ::handleNavigate,
                         modifier = Modifier.padding(top = 8.dp)
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                val contentInsets = paddingValues.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra
+                )
+                if (twoPanePreview && currentTab == CustomSettingsTab.DESKTOP_LYRICS) {
+                    FloatingLyricsSettingsSubScreen(
+                        prefs = prefs,
+                        settingModifier = { settingModifier(it) },
+                        twoPanePreview = true,
+                        contentPadding = paddingValues,
+                        footerContent = {
+                            otherLinksBlock()
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    )
+                } else if (
+                    twoPanePreview &&
+                    (currentTab == CustomSettingsTab.CAPSULE || currentTab == CustomSettingsTab.NOTIFICATION)
+                ) {
+                    AdaptiveTwoPane(
+                        startWeight = 0.40f,
+                        spacing = 16.dp,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                start = paddingValues.calculateStartPadding(layoutDirection) + 16.dp,
+                                end = paddingValues.calculateEndPadding(layoutDirection) + 16.dp
+                            ),
+                        startPane = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(
+                                        top = paddingValues.calculateTopPadding() + 12.dp,
+                                        bottom = paddingValues.calculateBottomPadding() + 24.dp
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (currentTab == CustomSettingsTab.CAPSULE) {
+                                    capsulePreviewBlock()
+                                } else {
+                                    notificationPreviewBlock()
+                                }
+                            }
+                        },
+                        endPane = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(pageScrollStates[page])
+                                    .padding(
+                                        top = paddingValues.calculateTopPadding(),
+                                        bottom = paddingValues.calculateBottomPadding()
+                                    )
+                            ) {
+                                tabSettingsContent()
+                                otherLinksBlock()
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+                        }
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(pageScrollStates[page])
+                            .padding(contentInsets)
+                    ) {
+                        tabSettingsContent()
+                        otherLinksBlock()
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
             
@@ -2682,6 +2801,7 @@ fun CapsuleNotificationScreen(
     initialTab: CustomSettingsTab? = null,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
@@ -2691,6 +2811,7 @@ fun CapsuleNotificationScreen(
         initialTab = initialTab,
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }
@@ -2700,6 +2821,7 @@ fun AppUiScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
@@ -2708,6 +2830,7 @@ fun AppUiScreen(
         tabs = setOf(CustomSettingsTab.APP_UI),
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }
@@ -2717,6 +2840,7 @@ fun DesktopLyricsScreen(
     onBack: () -> Unit,
     targetItemKey: String? = null,
     onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
@@ -2725,6 +2849,7 @@ fun DesktopLyricsScreen(
         tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
         targetItemKey = targetItemKey,
         onNavigate = onNavigate,
+        showBackButton = showBackButton,
         viewModel = viewModel
     )
 }

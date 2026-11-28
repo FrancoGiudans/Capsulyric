@@ -48,7 +48,8 @@ internal class NeteaseLyricProvider(
         title: String,
         artist: String,
         album: String = "",
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        versionReferenceTitle: String = title
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
@@ -68,9 +69,24 @@ internal class NeteaseLyricProvider(
                         songs.optJSONObject(index)?.let { add(NeteaseSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
-                    ?: return@withContext null
-                fetchById(best.providerTrackId.orEmpty(), best)
+                val topCandidates = CandidateMatcher.pickTopCandidates(
+                    candidates,
+                    title,
+                    artist,
+                    album,
+                    durationMs,
+                    limit = 2,
+                    versionReferenceTitle = versionReferenceTitle
+                )
+                if (topCandidates.isEmpty()) return@withContext null
+
+                for (candidate in topCandidates) {
+                    val lyricResult = fetchById(candidate.providerTrackId.orEmpty(), candidate)
+                    if (lyricResult != null && !lyricResult.parsedLines.isNullOrEmpty()) {
+                        return@withContext lyricResult
+                    }
+                }
+                null
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "Netease API错误: ${e.message}")
                 null
@@ -109,20 +125,23 @@ internal class NeteaseLyricProvider(
                 val romanContent = lyricJson.optLyricText("romalrc")
                     .ifBlank { lyricJson.optLyricText("yromalrc") }
 
-                if (lyricContent.isEmpty()) {
+                if (lyricContent.isBlank() && yrcContent.isBlank()) {
                     return@withContext null
                 }
 
-                // YRC 逐字优先：eapi 返回的 yrc 字段若为逐字形态则用逐字解析
+                // YRC 逐字优先：eapi 返回的 yrc 字段若为逐字形态则用逐字解析；若解析为空再降级普通 LRC
                 val hasSyllable = yrcContent.isNotBlank() && YrcParser.isYrcContent(yrcContent)
-                val parsedLines = if (hasSyllable) {
-                    OnlineLyricParser.parseYrcLyrics(yrcContent)
+                val yrcParsed = if (hasSyllable) OnlineLyricParser.parseYrcLyrics(yrcContent) else emptyList()
+                val (primaryContent, parsedLines) = if (yrcParsed.isNotEmpty()) {
+                    yrcContent to yrcParsed
+                } else if (lyricContent.isNotBlank()) {
+                    lyricContent to OnlineLyricParser.parseLrcLyrics(lyricContent)
                 } else {
-                    OnlineLyricParser.parseLrcLyrics(lyricContent)
+                    yrcContent to emptyList()
                 }
                 OnlineLyricFetcher.LyricResult(
                     api = "Netease",
-                    lyrics = if (hasSyllable) yrcContent else lyricContent,
+                    lyrics = primaryContent,
                     parsedLines = parsedLines,
                     hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.Netease,
@@ -140,7 +159,7 @@ internal class NeteaseLyricProvider(
             }
         }
 
-    private fun fetchLyricV1(songId: Long): String? {
+    private suspend fun fetchLyricV1(songId: Long): String? {
         return executeEapi(
             url = "https://interface3.music.163.com/eapi/song/lyric/v1",
             data = linkedMapOf(
@@ -158,7 +177,7 @@ internal class NeteaseLyricProvider(
         )
     }
 
-    private fun executeEapi(url: String, data: LinkedHashMap<String, String>): String? {
+    private suspend fun executeEapi(url: String, data: LinkedHashMap<String, String>): String? {
         val header = linkedMapOf(
             "__csrf" to "",
             "appver" to "8.0.0",
@@ -176,7 +195,7 @@ internal class NeteaseLyricProvider(
         val payload = LinkedHashMap(data)
         payload["header"] = JSONObject(header as Map<*, *>).toString()
 
-        return httpClient.postFormBlocking(
+        return httpClient.postForm(
             url = url,
             form = mapOf(
                 "params" to NeteaseEapiCrypto.buildParams(url, JSONObject(payload as Map<*, *>).toString())
@@ -185,7 +204,8 @@ internal class NeteaseLyricProvider(
                 "Referer" to "https://music.163.com/",
                 "User-Agent" to NETEASE_EAPI_USER_AGENT,
                 "Cookie" to header.entries.joinToString("; ") { "${it.key}=${it.value}" }
-            )
+            ),
+            requireSuccessful = true
         ).also {
             if (it == null) {
                 AppLogger.getInstance().d("OnlineLyric", "Netease eapi failed")
@@ -232,6 +252,7 @@ internal class NeteaseLyricProvider(
 
         override val matchedDurationMs: Long?
             get() = song.optLong("dt", 0L).takeIf { it > 0L }
+                ?: song.optLong("duration", 0L).takeIf { it > 0L }
 
         override val providerTrackId: String?
             get() = song.optLong("id", 0L).takeIf { it > 0L }?.toString()

@@ -105,7 +105,7 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 | **Online Lyrics** | Fetches from online servers. Supports translations & romanization. / 从互联网服务器获取，支持翻译与拼音歌词。 |
 | **Superlyric API** | High accuracy (Root/LSPosed required). / 准确度高（需 Root/LSPosed）。 |
 | **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族状态栏歌词及免 Root 注入。 |
-| **Lyricon API** | Root/LSPosed required. / 需 Root/LSPosed。 |
+| **Lyricon API** | Requires Lyricon or standalone Lyricon Core Service (`core-service`) via Root/LSPosed (System UI scope). / 需通过 Root/LSPosed 启用词幕或官方独立 Lyricon 核心服务（`core-service`，作用域勾选系统界面）。 |
 | **Local Lyric** | Based on local .lrc files with auto-matching. / 基于本地 .lrc 歌词文件，支持自动匹配。 |
 
 ---

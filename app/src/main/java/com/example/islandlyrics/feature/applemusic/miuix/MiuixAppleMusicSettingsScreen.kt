@@ -62,6 +62,8 @@ import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache
 import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
 import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
@@ -100,7 +102,10 @@ private val AppleMusicStatusSuccess = Color(0xFF2E7D32)
 
 
 @Composable
-fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
+fun MiuixAppleMusicSettingsScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -189,24 +194,40 @@ fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
                 largeTitle = stringResource(R.string.apple_music_settings_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraTop = 12.dp,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(
@@ -379,6 +400,7 @@ fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
                     modifier = Modifier.padding(top = 12.dp)
                 )
             }
+        }
         }
     }
 }

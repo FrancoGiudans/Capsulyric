@@ -72,6 +72,9 @@ import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.islandlyrics.ui.adaptive.AdaptiveReadableBox
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
@@ -97,7 +100,10 @@ private val AppleMusicStatusSuccess = Color(0xFF2E7D32)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppleMusicSettingsScreen(onBack: () -> Unit) {
+fun AppleMusicSettingsScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     var storefront by remember { mutableStateOf(AppPreferences.appleMusicStorefront(prefs)) }
@@ -166,20 +172,27 @@ fun AppleMusicSettingsScreen(onBack: () -> Unit) {
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.apple_music_settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
                     }
                 },
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
+        AdaptiveReadableBox(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(padding)
+                .padding(bottom = 24.dp)
         ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             SettingsSectionHeader(
                 text = stringResource(R.string.apple_music_settings_desc),
                 marginTop = 8.dp
@@ -330,6 +343,7 @@ fun AppleMusicSettingsScreen(onBack: () -> Unit) {
                         )
                     }
                 }
+            }
             }
         }
     }

@@ -26,6 +26,8 @@ import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
@@ -59,7 +61,8 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogViewerScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -125,8 +128,10 @@ fun LogViewerScreen(
             MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.log_viewer_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.log_viewer_back))
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.log_viewer_back))
+                        }
                     }
                 },
                 actions = {
@@ -162,91 +167,175 @@ fun LogViewerScreen(
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
+        val layoutInfo = LocalAppWindowLayout.current
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+        val startPadding = padding.calculateStartPadding(layoutDirection)
+        val endPadding = padding.calculateEndPadding(layoutDirection)
+        val topPadding = padding.calculateTopPadding()
+        val bottomPadding = padding.calculateBottomPadding()
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Search & Filter
-            Column(modifier = Modifier.padding(8.dp)) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.log_viewer_search)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = filterLevel == "ALL",
-                        onClick = { filterLevel = "ALL" },
-                        label = { Text(stringResource(R.string.log_viewer_level_all)) }
-                    )
-                    FilterChip(
-                        selected = filterLevel == "E",
-                        onClick = { filterLevel = "E" },
-                        label = { Text(stringResource(R.string.log_viewer_level_error)) },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer)
-                    )
-                    FilterChip(
-                        selected = filterLevel == "W",
-                        onClick = { filterLevel = "W" },
-                        label = { Text(stringResource(R.string.log_viewer_level_warn)) },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                    )
-                    FilterChip(
-                        selected = filterLevel == "D",
-                        onClick = { filterLevel = "D" },
-                        label = { Text(stringResource(R.string.log_viewer_level_debug)) }
-                    )
-                }
-                Box(modifier = Modifier.padding(top = 8.dp)) {
-                    AssistChip(
-                        onClick = { showRecordLevelMenu = true },
-                        label = {
-                            Text(stringResource(R.string.log_viewer_record_prefix, recordLevelOptions.first { it.first == recordLevel }.second))
-                        },
-                        trailingIcon = {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                        }
-                    )
-                    MaterialBlurDropdownMenu(
-                        expanded = showRecordLevelMenu,
-                        onDismissRequest = { showRecordLevelMenu = false }
-                    ) {
-                        recordLevelOptions.forEach { (level, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    recordLevel = level
-                                    AppPreferences.of(context)
-                                        .edit()
-                                        .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
-                                        .apply()
-                                    AppLogger.getInstance().setMinimumLevel(level)
-                                    showRecordLevelMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // List
-            LazyColumn(
-                state = listState,
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(start = startPadding, top = topPadding, end = endPadding)
+                    .widthIn(max = 1000.dp)
             ) {
-                items(logs) { entry ->
-                    LogItem(entry)
+                val compactFilterRow = layoutInfo.isLandscape && maxWidth >= 600.dp
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Search & Filter
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        if (compactFilterRow) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    label = { Text(stringResource(R.string.log_viewer_search)) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "ALL",
+                                    onClick = { filterLevel = "ALL" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_all)) }
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "E",
+                                    onClick = { filterLevel = "E" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_error)) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer)
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "W",
+                                    onClick = { filterLevel = "W" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_warn)) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "D",
+                                    onClick = { filterLevel = "D" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_debug)) }
+                                )
+                                Box {
+                                    AssistChip(
+                                        onClick = { showRecordLevelMenu = true },
+                                        label = {
+                                            Text(stringResource(R.string.log_viewer_record_prefix, recordLevelOptions.first { it.first == recordLevel }.second))
+                                        },
+                                        trailingIcon = {
+                                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                                        }
+                                    )
+                                    MaterialBlurDropdownMenu(
+                                        expanded = showRecordLevelMenu,
+                                        onDismissRequest = { showRecordLevelMenu = false }
+                                    ) {
+                                        recordLevelOptions.forEach { (level, label) ->
+                                            DropdownMenuItem(
+                                                text = { Text(label) },
+                                                onClick = {
+                                                    recordLevel = level
+                                                    AppPreferences.of(context)
+                                                        .edit()
+                                                        .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
+                                                        .apply()
+                                                    AppLogger.getInstance().setMinimumLevel(level)
+                                                    showRecordLevelMenu = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                label = { Text(stringResource(R.string.log_viewer_search)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = filterLevel == "ALL",
+                                    onClick = { filterLevel = "ALL" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_all)) }
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "E",
+                                    onClick = { filterLevel = "E" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_error)) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer)
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "W",
+                                    onClick = { filterLevel = "W" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_warn)) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                                )
+                                FilterChip(
+                                    selected = filterLevel == "D",
+                                    onClick = { filterLevel = "D" },
+                                    label = { Text(stringResource(R.string.log_viewer_level_debug)) }
+                                )
+                            }
+                            Box(modifier = Modifier.padding(top = 8.dp)) {
+                                AssistChip(
+                                    onClick = { showRecordLevelMenu = true },
+                                    label = {
+                                        Text(stringResource(R.string.log_viewer_record_prefix, recordLevelOptions.first { it.first == recordLevel }.second))
+                                    },
+                                    trailingIcon = {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                                    }
+                                )
+                                MaterialBlurDropdownMenu(
+                                    expanded = showRecordLevelMenu,
+                                    onDismissRequest = { showRecordLevelMenu = false }
+                                ) {
+                                    recordLevelOptions.forEach { (level, label) ->
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                recordLevel = level
+                                                AppPreferences.of(context)
+                                                    .edit()
+                                                    .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
+                                                    .apply()
+                                                AppLogger.getInstance().setMinimumLevel(level)
+                                                showRecordLevelMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // List
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp),
+                        contentPadding = PaddingValues(bottom = bottomPadding + 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(logs) { entry ->
+                            LogItem(entry)
+                        }
+                    }
                 }
             }
         }

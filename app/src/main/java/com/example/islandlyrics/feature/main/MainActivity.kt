@@ -63,9 +63,11 @@ import com.example.islandlyrics.feature.locallyrics.miuix.MiuixLocalLyricDirecto
 import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
 import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
+import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationRail
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelFloatingNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelLiquidGlassNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
+import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationRail
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
 import com.example.islandlyrics.feature.main.miuix.MiuixLyricsPlaybackScreen
@@ -95,6 +97,9 @@ import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
+import com.example.islandlyrics.ui.adaptive.AdaptiveTwoPane
+import com.example.islandlyrics.ui.adaptive.LocalAdaptiveHasStartRail
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.ui.navigation.PageStackHost
 import com.example.islandlyrics.ui.navigation.PageExpansion
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
@@ -108,6 +113,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
@@ -116,6 +122,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -132,6 +140,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -165,7 +175,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop as rememberLiquidLayer
 class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private val lyricsPlaybackNavigation by viewModels<LyricsPlaybackNavigationState>()
+    private val navViewModel by viewModels<MainNavigationViewModel>()
 
     // Compose state for API dashboard
     private var versionText by mutableStateOf("...")
@@ -178,6 +188,9 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) {
+            navViewModel.sanitizeRestoredTransitions()
+        }
 
         // OOBE Check
         val prefs = AppPreferences.of(this)
@@ -361,12 +374,13 @@ class MainActivity : BaseActivity() {
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
+                val useRail = LocalAppWindowLayout.current.useNavigationRail
                 MaterialTopLevelPager(thirdPartyImporter)
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 96.dp),
+                        .padding(horizontal = 16.dp, vertical = if (useRail) 24.dp else 96.dp),
                     snackbar = { data ->
                         androidx.compose.material3.Snackbar(
                             snackbarData = data,
@@ -400,9 +414,7 @@ class MainActivity : BaseActivity() {
         )
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-        val pageStack = remember {
-            androidx.compose.runtime.mutableStateListOf<AppPage>()
-        }
+        val pageStack = navViewModel.pageStack
         fun pushPage(page: AppPage) {
             pageStack.add(page)
         }
@@ -414,110 +426,235 @@ class MainActivity : BaseActivity() {
             if (pageStack.isEmpty()) bottomBarVisible = true
         }
 
+        val layoutInfo = LocalAppWindowLayout.current
         val targetBottomBarVisible = bottomBarVisible && pageStack.isEmpty()
-        PageStackHost(
-            stack = pageStack,
-            onPop = ::popPage,
-            backdropColor = MaterialTheme.colorScheme.background,
+        val topIsFullScreenLyrics = pageStack.lastOrNull() is AppPage.LyricsPlayback
+        val showNavigationRail = layoutInfo.useNavigationRail && !topIsFullScreenLyrics
+        val showBottomBar = !layoutInfo.useNavigationRail && targetBottomBarVisible
+
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            backgroundContent = {
-            // Content fills the entire screen, including behind the floating nav bar.
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                // Give enough bottom padding so the last item can scroll clear of the nav bar.
-                val bottomPadding = if (targetBottomBarVisible) 120.dp else 24.dp
-                when (TopLevelDestination.entries[page]) {
-                    TopLevelDestination.HOME -> MainScreen(
-                        versionText = versionText,
-                        isDebugBuild = BuildConfig.DEBUG,
-                        onOpenSettings = {},
-                        onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
-                        onOpenWhitelist = {},
-                        onOpenDebug = { openDebugCenter() },
-                        onOpenPromotedSettings = { openPromotedSettings() },
-                        onStatusCardTap = {
-                            MediaMonitorService.requestRebind(this@MainActivity)
-                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        },
-                        onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                        extraBottomPadding = bottomPadding
-                    )
-
-                    TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
-                        showBackButton = false,
-                        extraBottomPadding = bottomPadding,
-                        onBottomBarVisibilityChange = { bottomBarVisible = it },
-                        onOpenFaq = { pushPage(AppPage.Faq) },
-                        onOpenRuleEditor = { pkg, name ->
-                            pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
-                        },
-                        onOpenTemplateEditor = {
-                            pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            if (showNavigationRail) {
+                MaterialTopLevelNavigationRail(
+                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                    onNavigate = { destination ->
+                        pageStack.clear()
+                        scope.launch {
+                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
                         }
-                    )
+                    },
+                    expanded = layoutInfo.expandNavigationRailByDefault,
+                )
+            }
+            CompositionLocalProvider(LocalAdaptiveHasStartRail provides showNavigationRail) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .then(if (showNavigationRail) Modifier.clipToBounds() else Modifier)
+                ) {
+                    PageStackHost(
+                        stack = pageStack,
+                        onPop = ::popPage,
+                        backdropColor = MaterialTheme.colorScheme.background,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        backgroundContent = {
+                            // Content fills the entire screen, including behind the floating nav bar.
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                // Give enough bottom padding so the last item can scroll clear of the nav bar.
+                                val bottomPadding = if (showBottomBar) 120.dp else 24.dp
+                                when (TopLevelDestination.entries[page]) {
+                                    TopLevelDestination.HOME -> MainScreen(
+                                        versionText = versionText,
+                                        isDebugBuild = BuildConfig.DEBUG,
+                                        onOpenSettings = {},
+                                        onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
+                                        onOpenWhitelist = {},
+                                        onOpenDebug = { openDebugCenter() },
+                                        onOpenPromotedSettings = { openPromotedSettings() },
+                                        onStatusCardTap = {
+                                            MediaMonitorService.requestRebind(this@MainActivity)
+                                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                        extraBottomPadding = bottomPadding
+                                    )
 
-                    TopLevelDestination.SETTINGS -> SettingsScreen(
-                        thirdPartyImporter = thirdPartyImporter,
-                        onCheckUpdate = { performUpdateCheckFromMain() },
-                        onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
-                        updateVersionText = getVersionNameForUi(),
-                        updateCodenameText = BuildConfig.VERSION_CODENAME,
-                        updateBuildText = BuildConfig.GIT_COMMIT_HASH,
-                        onOpenCustomSettings = {
-                            pushPage(AppPage.CustomSettings())
+                                    TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
+                                        showBackButton = false,
+                                        extraBottomPadding = bottomPadding,
+                                        onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                        onOpenFaq = { pushPage(AppPage.Faq) },
+                                        onOpenRuleEditor = { pkg, name ->
+                                            pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
+                                        },
+                                        onOpenTemplateEditor = {
+                                            pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
+                                        },
+                                        selectedDetailKey = navViewModel.selectedParserRuleKey,
+                                        onSelectDetailKey = { navViewModel.selectedParserRuleKey = it }
+                                    )
+
+                                    TopLevelDestination.SETTINGS -> {
+                                        val selectSettingsDetail: (AppPage) -> Unit = { targetPage ->
+                                            navViewModel.selectedSettingsDetail = targetPage
+                                            navViewModel.settingsDetailSubStack.clear()
+                                        }
+                                        if (layoutInfo.useMasterDetail) {
+                                            BackHandler(
+                                                enabled = pageStack.isEmpty() &&
+                                                    pagerState.currentPage == TopLevelDestination.SETTINGS.ordinal &&
+                                                    navViewModel.settingsDetailSubStack.isNotEmpty()
+                                            ) {
+                                                navViewModel.settingsDetailSubStack.removeAt(
+                                                    navViewModel.settingsDetailSubStack.lastIndex
+                                                )
+                                            }
+                                            val activeDetail = navViewModel.settingsDetailSubStack.lastOrNull()
+                                                ?: navViewModel.selectedSettingsDetail
+                                                ?: AppPage.CapsuleNotification()
+                                            val selectedTarget = (navViewModel.selectedSettingsDetail
+                                                ?: AppPage.CapsuleNotification()).toSettingsDetailTarget()
+                                            AdaptiveTwoPane(
+                                                startWeight = 0.38f,
+                                                dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.fillMaxSize(),
+                                                startPane = {
+                                                    SettingsScreen(
+                                                        thirdPartyImporter = thirdPartyImporter,
+                                                        onCheckUpdate = { performUpdateCheckFromMain() },
+                                                        onShowDiagnostics = { selectSettingsDetail(AppPage.Diagnostics) },
+                                                        updateVersionText = getVersionNameForUi(),
+                                                        updateCodenameText = BuildConfig.VERSION_CODENAME,
+                                                        updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                                                        onOpenCustomSettings = { selectSettingsDetail(AppPage.CustomSettings()) },
+                                                        onOpenCapsuleNotification = { selectSettingsDetail(AppPage.CapsuleNotification()) },
+                                                        onOpenDesktopLyrics = { selectSettingsDetail(AppPage.DesktopLyrics()) },
+                                                        onOpenCommunity = { selectSettingsDetail(AppPage.Community) },
+                                                        onOpenFaq = { selectSettingsDetail(AppPage.Faq) },
+                                                        onOpenAbout = { selectSettingsDetail(AppPage.About) },
+                                                        onOpenLocalLyricDirectories = { selectSettingsDetail(AppPage.LocalLyricDirectories) },
+                                                        onOpenLocalLyricDirectory = { uri, name ->
+                                                            navViewModel.settingsDetailSubStack.add(
+                                                                AppPage.LocalLyricDirectory(uri.toString(), name)
+                                                            )
+                                                        },
+                                                        onOpenOnlineLyricRematch = { selectSettingsDetail(AppPage.OnlineLyricDebug) },
+                                                        onOpenLastFm = { selectSettingsDetail(AppPage.LastFm) },
+                                                        onOpenCacheManagement = { selectSettingsDetail(AppPage.CacheManagement) },
+                                                        onOpenLab = { selectSettingsDetail(AppPage.Lab()) },
+                                                        onNavigateAction = { action -> action.toAppPage()?.let(selectSettingsDetail) },
+                                                        showBackButton = false,
+                                                        extraBottomPadding = 0.dp,
+                                                        isMasterPane = true,
+                                                        selectedDetailTarget = selectedTarget
+                                                    )
+                                                },
+                                                endPane = {
+                                                    CompositionLocalProvider(LocalAdaptiveHasStartRail provides true) {
+                                                        Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                                                            key(activeDetail) {
+                                                                MaterialAppPage(
+                                                                    page = activeDetail,
+                                                                    showBackButton = navViewModel.settingsDetailSubStack.isNotEmpty(),
+                                                                    onBack = {
+                                                                        if (navViewModel.settingsDetailSubStack.isNotEmpty()) {
+                                                                            navViewModel.settingsDetailSubStack.removeAt(
+                                                                                navViewModel.settingsDetailSubStack.lastIndex
+                                                                            )
+                                                                        }
+                                                                    },
+                                                                    onPushPage = { pushed ->
+                                                                        navViewModel.settingsDetailSubStack.add(pushed)
+                                                                    },
+                                                                    onNavigate = { action ->
+                                                                        action.toAppPage()?.let { targetPage ->
+                                                                            if (targetPage is AppPage.LocalLyricDirectory ||
+                                                                                targetPage is AppPage.LogViewer ||
+                                                                                targetPage is AppPage.ParserRuleEditor
+                                                                            ) {
+                                                                                navViewModel.settingsDetailSubStack.add(targetPage)
+                                                                            } else {
+                                                                                selectSettingsDetail(targetPage)
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            SettingsScreen(
+                                                thirdPartyImporter = thirdPartyImporter,
+                                                onCheckUpdate = { performUpdateCheckFromMain() },
+                                                onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
+                                                updateVersionText = getVersionNameForUi(),
+                                                updateCodenameText = BuildConfig.VERSION_CODENAME,
+                                                updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                                                onOpenCustomSettings = {
+                                                    pushPage(AppPage.CustomSettings())
+                                                },
+                                                onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
+                                                onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
+                                                onOpenCommunity = { pushPage(AppPage.Community) },
+                                                onOpenFaq = { pushPage(AppPage.Faq) },
+                                                onOpenAbout = { pushPage(AppPage.About) },
+                                                onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
+                                                onOpenLocalLyricDirectory = { uri, name ->
+                                                    pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
+                                                },
+                                                onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                                onOpenLastFm = { pushPage(AppPage.LastFm) },
+                                                onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
+                                                onOpenLab = { pushPage(AppPage.Lab()) },
+                                                onNavigateAction = { action -> action.toAppPage()?.let(::pushPage) },
+                                                showBackButton = false,
+                                                extraBottomPadding = bottomPadding
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Floating nav bar — sits above the system navigation bar, overlaid on content.
+                            AdaptiveNavBottomBarContainer(
+                                visible = showBottomBar,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .navigationBarsPadding()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                MaterialTopLevelNavigationBar(
+                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                    onNavigate = { destination ->
+                                        scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                                    }
+                                )
+                            }
                         },
-                        onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
-                        onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
-                        onOpenCommunity = { pushPage(AppPage.Community) },
-                        onOpenFaq = { pushPage(AppPage.Faq) },
-                        onOpenAbout = { pushPage(AppPage.About) },
-                        onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
-                        onOpenLocalLyricDirectory = { uri, name ->
-                            pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
-                        },
-                        onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                        onOpenLastFm = { pushPage(AppPage.LastFm) },
-                        onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
-                        onOpenLab = { pushPage(AppPage.Lab()) },
-                        onNavigateAction = { action -> action.toAppPage()?.let(::pushPage) },
-                        showBackButton = false,
-                        extraBottomPadding = bottomPadding
+                        pageContent = { page ->
+                            MaterialAppPage(
+                                page = page,
+                                onBack = ::popPage,
+                                onPushPage = ::pushPage,
+                                onNavigate = { action -> action.toAppPage()?.let(::pushPage) }
+                            )
+                        }
                     )
                 }
             }
-
-            // Floating nav bar — sits above the system navigation bar, overlaid on content.
-            AnimatedVisibility(
-                visible = targetBottomBarVisible,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
-            ) {
-                MaterialTopLevelNavigationBar(
-                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                    onNavigate = { destination ->
-                        scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
-                    }
-                )
-            }
-            },
-            pageContent = { page ->
-                MaterialAppPage(
-                    page = page,
-                    onBack = ::popPage,
-                    onPushPage = ::pushPage,
-                    onNavigate = { action -> action.toAppPage()?.let(::pushPage) }
-                )
-            }
-        )
         }
+    }
 
     @Composable
     private fun MiuixTopLevelPager(thirdPartyImporter: ThirdPartyImportUiState) {
@@ -527,17 +664,12 @@ class MainActivity : BaseActivity() {
         )
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-        val pageStack = remember {
-            androidx.compose.runtime.mutableStateListOf<AppPage>().apply {
-                lyricsPlaybackNavigation.start?.let { add(AppPage.LyricsPlayback(expansion = null, start = it)) }
-            }
-        }
+        val pageStack = navViewModel.pageStack
         fun pushPage(page: AppPage) {
             pageStack.add(page)
-            if (page is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = page.start
         }
         fun popPage() {
-            if (pageStack.removeLastOrNull() is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = null
+            pageStack.removeLastOrNull()
         }
         fun handleNavigate(action: SettingsSearchAction.Navigate) {
             action.toAppPage()?.let(::pushPage)
@@ -615,186 +747,316 @@ class MainActivity : BaseActivity() {
                 popupHost = { MiuixPopupHost() },
                 containerColor = Color.Transparent
             ) {
+                val layoutInfo = LocalAppWindowLayout.current
                 val targetBottomBarVisible =
                     (if (navigationBarStyle == MiuixNavigationBarStyle.NORMAL) true else bottomBarVisible) &&
                         pageStack.isEmpty()
+                val topIsFullScreenLyrics = pageStack.lastOrNull() is AppPage.LyricsPlayback
+                val showNavigationRail = layoutInfo.useNavigationRail && !topIsFullScreenLyrics
+                val showBottomBar = !layoutInfo.useNavigationRail && targetBottomBarVisible
                 var navigationBounds by remember { mutableStateOf(Rect.Zero) }
-                PageStackHost(
-                    stack = pageStack,
-                    onPop = ::popPage,
-                    backdropColor = MiuixTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxSize().onGloballyPositioned {
-                        navigationBounds = it.boundsInWindow()
-                    },
-                    useMiuixNavForDefault = true,
-                    pageExpansion = { (it as? AppPage.LyricsPlayback)?.expansion },
-                    backgroundContent = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clipToBounds()
-                            .background(MiuixTheme.colorScheme.surface)
-                            .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
-                            .then(
-                                if (navigationBarStyle == MiuixNavigationBarStyle.LIQUID) {
-                                    Modifier.liquidLayerBackdrop(liquidBackdrop)
-                                } else {
-                                    Modifier
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MiuixTheme.colorScheme.surface)
+                ) {
+                    if (showNavigationRail) {
+                        MiuixTopLevelNavigationRail(
+                            currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                            onNavigate = { destination ->
+                                pageStack.clear()
+                                scope.launch {
+                                    pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
                                 }
-                            )
-                    ) {
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            when (TopLevelDestination.entries[page]) {
-                                TopLevelDestination.HOME -> MiuixMainScreen(
-                                    versionText = versionText,
-                                    isDebugBuild = BuildConfig.DEBUG,
-                                    onOpenSettings = {},
-                                    onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
-                                    onOpenWhitelist = {},
-                                    onOpenDebug = { openDebugCenter() },
-                                    onOpenPromotedSettings = { openPromotedSettings() },
-                                    onStatusCardTap = {
-                                        MediaMonitorService.requestRebind(this@MainActivity)
-                                        Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                                    },
-                                    onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
-                                    onOpenLyricsPlayback = { anchor, start ->
-                                        if (pageStack.isEmpty()) {
-                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds), start))
-                                        }
-                                    },
-                                )
-
-                                TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
-                                    showBackButton = false,
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
-                                    onOpenFaq = { pushPage(AppPage.Faq) },
-                                    onOpenRuleEditor = { pkg, name ->
-                                        pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
-                                    },
-                                    onOpenTemplateEditor = {
-                                        pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
-                                    }
-                                )
-
-                                TopLevelDestination.SETTINGS -> MiuixSettingsScreen(
-                                    thirdPartyImporter = thirdPartyImporter,
-                                    onCheckUpdate = { performUpdateCheckFromMain() },
-                                    onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
-                                    updateVersionText = getVersionNameForUi(),
-                                    updateCodenameText = BuildConfig.VERSION_CODENAME,
-                                    updateBuildText = BuildConfig.GIT_COMMIT_HASH,
-                                    onOpenCustomSettings = {
-                                        pushPage(AppPage.CustomSettings())
-                                    },
-                                    onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
-                                    onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
-                                    onOpenCommunity = { pushPage(AppPage.Community) },
-                                    onOpenFaq = { pushPage(AppPage.Faq) },
-                                    onOpenAbout = { pushPage(AppPage.About) },
-                                    onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
-                                    onOpenLocalLyricDirectory = { uri, name ->
-                                        pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
-                                    },
-                                    onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                                    onOpenLastFm = { pushPage(AppPage.LastFm) },
-                                    onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
-                                    onOpenLab = { pushPage(AppPage.Lab()) },
-                                    onNavigateAction = ::handleNavigate,
-                                    showBackButton = false,
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it }
-                                )
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = targetBottomBarVisible,
-                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .then(
-                                if (navigationBarStyle == MiuixNavigationBarStyle.FLOATING) {
-                                    Modifier.padding(horizontal = 4.dp)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    ) {
-                        when (navigationBarStyle) {
-                            MiuixNavigationBarStyle.NORMAL -> {
-                                MiuixTopLevelNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    }
-                                )
-                            }
-
-                            MiuixNavigationBarStyle.FLOATING -> {
-                                MiuixTopLevelFloatingNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    }
-                                )
-                            }
-
-                            MiuixNavigationBarStyle.LIQUID -> {
-                                MiuixTopLevelLiquidGlassNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    },
-                                    backdrop = liquidBackdrop
-                                )
-                            }
-                        }
-                    }
-
-                    MiuixSnackbarHost(
-                        state = snackbarHostState,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = if (targetBottomBarVisible) 82.dp else 16.dp),
-                        content = { data -> MiuixBlurSnackbar(data = data) }
-                    )
-
-                    if (updateReleaseInfo != null) {
-                        MiuixUpdateDialog(
-                            show = true,
-                            releaseInfo = updateReleaseInfo!!,
-                            onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { version ->
-                                UpdateChecker.setIgnoredVersion(this@MainActivity, version)
-                                AppLogger.getInstance().log("Update", "Ignored version: $version")
-                            }
+                            },
+                            expandable = layoutInfo.showNavigationRailToggle,
+                            expandedByDefault = layoutInfo.expandNavigationRailByDefault,
                         )
                     }
-                    },
-                    pageContent = { page ->
-                        MiuixAppPage(
-                            page = page,
-                            onBack = ::popPage,
-                            onPushPage = ::pushPage,
-                            onNavigate = ::handleNavigate
-                        )
+                    CompositionLocalProvider(LocalAdaptiveHasStartRail provides showNavigationRail) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .then(if (showNavigationRail) Modifier.clipToBounds() else Modifier)
+                        ) {
+                            PageStackHost(
+                                stack = pageStack,
+                                onPop = ::popPage,
+                                backdropColor = MiuixTheme.colorScheme.surface,
+                                modifier = Modifier.fillMaxSize().onGloballyPositioned {
+                                    navigationBounds = it.boundsInWindow()
+                                },
+                                useMiuixNavForDefault = true,
+                                pageExpansion = { (it as? AppPage.LyricsPlayback)?.expansion },
+                                backgroundContent = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clipToBounds()
+                                            .background(MiuixTheme.colorScheme.surface)
+                                            .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
+                                            .then(
+                                                if (navigationBarStyle == MiuixNavigationBarStyle.LIQUID) {
+                                                    Modifier.liquidLayerBackdrop(liquidBackdrop)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
+                                    ) {
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            modifier = Modifier.fillMaxSize()
+                                        ) { page ->
+                                            when (TopLevelDestination.entries[page]) {
+                                                TopLevelDestination.HOME -> MiuixMainScreen(
+                                                    versionText = versionText,
+                                                    isDebugBuild = BuildConfig.DEBUG,
+                                                    onOpenSettings = {},
+                                                    onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
+                                                    onOpenWhitelist = {},
+                                                    onOpenDebug = { openDebugCenter() },
+                                                    onOpenPromotedSettings = { openPromotedSettings() },
+                                                    onStatusCardTap = {
+                                                        MediaMonitorService.requestRebind(this@MainActivity)
+                                                        Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                                    extraBottomPadding = if (showBottomBar) 116.dp else 24.dp,
+                                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                                    onOpenLyricsPlayback = { anchor, start ->
+                                                        if (pageStack.isEmpty()) {
+                                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds), start))
+                                                        }
+                                                    },
+                                                )
+
+                                                TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
+                                                    showBackButton = false,
+                                                    extraBottomPadding = if (showBottomBar) 92.dp else 0.dp,
+                                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                                    onOpenFaq = { pushPage(AppPage.Faq) },
+                                                    onOpenRuleEditor = { pkg, name ->
+                                                        pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
+                                                    },
+                                                    onOpenTemplateEditor = {
+                                                        pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
+                                                    },
+                                                    selectedDetailKey = navViewModel.selectedParserRuleKey,
+                                                    onSelectDetailKey = { navViewModel.selectedParserRuleKey = it }
+                                                )
+
+                                                TopLevelDestination.SETTINGS -> {
+                                                    val selectSettingsDetail: (AppPage) -> Unit = { targetPage ->
+                                                        navViewModel.selectedSettingsDetail = targetPage
+                                                        navViewModel.settingsDetailSubStack.clear()
+                                                    }
+                                                    if (layoutInfo.useMasterDetail) {
+                                                        BackHandler(
+                                                            enabled = pageStack.isEmpty() &&
+                                                                pagerState.currentPage == TopLevelDestination.SETTINGS.ordinal &&
+                                                                navViewModel.settingsDetailSubStack.isNotEmpty()
+                                                        ) {
+                                                            navViewModel.settingsDetailSubStack.removeAt(
+                                                                navViewModel.settingsDetailSubStack.lastIndex
+                                                            )
+                                                        }
+                                                        val activeDetail = navViewModel.settingsDetailSubStack.lastOrNull()
+                                                            ?: navViewModel.selectedSettingsDetail
+                                                            ?: AppPage.CapsuleNotification()
+                                                        val selectedTarget = (navViewModel.selectedSettingsDetail
+                                                            ?: AppPage.CapsuleNotification()).toSettingsDetailTarget()
+                                                        AdaptiveTwoPane(
+                                                            startWeight = 0.38f,
+                                                            dividerColor = MiuixTheme.colorScheme.dividerLine,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            startPane = {
+                                                                MiuixSettingsScreen(
+                                                                    thirdPartyImporter = thirdPartyImporter,
+                                                                    onCheckUpdate = { performUpdateCheckFromMain() },
+                                                                    onShowDiagnostics = { selectSettingsDetail(AppPage.Diagnostics) },
+                                                                    updateVersionText = getVersionNameForUi(),
+                                                                    updateCodenameText = BuildConfig.VERSION_CODENAME,
+                                                                    updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                                                                    onOpenCustomSettings = { selectSettingsDetail(AppPage.CustomSettings()) },
+                                                                    onOpenCapsuleNotification = { selectSettingsDetail(AppPage.CapsuleNotification()) },
+                                                                    onOpenDesktopLyrics = { selectSettingsDetail(AppPage.DesktopLyrics()) },
+                                                                    onOpenCommunity = { selectSettingsDetail(AppPage.Community) },
+                                                                    onOpenFaq = { selectSettingsDetail(AppPage.Faq) },
+                                                                    onOpenAbout = { selectSettingsDetail(AppPage.About) },
+                                                                    onOpenLocalLyricDirectories = { selectSettingsDetail(AppPage.LocalLyricDirectories) },
+                                                                    onOpenLocalLyricDirectory = { uri, name ->
+                                                                        navViewModel.settingsDetailSubStack.add(
+                                                                            AppPage.LocalLyricDirectory(uri.toString(), name)
+                                                                        )
+                                                                    },
+                                                                    onOpenOnlineLyricRematch = { selectSettingsDetail(AppPage.OnlineLyricDebug) },
+                                                                    onOpenLastFm = { selectSettingsDetail(AppPage.LastFm) },
+                                                                    onOpenCacheManagement = { selectSettingsDetail(AppPage.CacheManagement) },
+                                                                    onOpenLab = { selectSettingsDetail(AppPage.Lab()) },
+                                                                    onNavigateAction = { action -> action.toAppPage()?.let(selectSettingsDetail) },
+                                                                    showBackButton = false,
+                                                                    extraBottomPadding = 0.dp,
+                                                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                                                    isMasterPane = true,
+                                                                    selectedDetailTarget = selectedTarget
+                                                                )
+                                                            },
+                                                            endPane = {
+                                                                CompositionLocalProvider(LocalAdaptiveHasStartRail provides true) {
+                                                                    Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                                                                        key(activeDetail) {
+                                                                            MiuixAppPage(
+                                                                                page = activeDetail,
+                                                                                showBackButton = navViewModel.settingsDetailSubStack.isNotEmpty(),
+                                                                                onBack = {
+                                                                                    if (navViewModel.settingsDetailSubStack.isNotEmpty()) {
+                                                                                        navViewModel.settingsDetailSubStack.removeAt(
+                                                                                            navViewModel.settingsDetailSubStack.lastIndex
+                                                                                        )
+                                                                                    }
+                                                                                },
+                                                                                onPushPage = { pushed ->
+                                                                                    navViewModel.settingsDetailSubStack.add(pushed)
+                                                                                },
+                                                                                onNavigate = { action ->
+                                                                                    action.toAppPage()?.let { targetPage ->
+                                                                                        if (targetPage is AppPage.LocalLyricDirectory ||
+                                                                                            targetPage is AppPage.LogViewer ||
+                                                                                            targetPage is AppPage.ParserRuleEditor
+                                                                                        ) {
+                                                                                            navViewModel.settingsDetailSubStack.add(targetPage)
+                                                                                        } else {
+                                                                                            selectSettingsDetail(targetPage)
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        )
+                                                    } else {
+                                                        MiuixSettingsScreen(
+                                                            thirdPartyImporter = thirdPartyImporter,
+                                                            onCheckUpdate = { performUpdateCheckFromMain() },
+                                                            onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
+                                                            updateVersionText = getVersionNameForUi(),
+                                                            updateCodenameText = BuildConfig.VERSION_CODENAME,
+                                                            updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                                                            onOpenCustomSettings = {
+                                                                pushPage(AppPage.CustomSettings())
+                                                            },
+                                                            onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
+                                                            onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
+                                                            onOpenCommunity = { pushPage(AppPage.Community) },
+                                                            onOpenFaq = { pushPage(AppPage.Faq) },
+                                                            onOpenAbout = { pushPage(AppPage.About) },
+                                                            onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
+                                                            onOpenLocalLyricDirectory = { uri, name ->
+                                                                pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
+                                                            },
+                                                            onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                                            onOpenLastFm = { pushPage(AppPage.LastFm) },
+                                                            onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
+                                                            onOpenLab = { pushPage(AppPage.Lab()) },
+                                                            onNavigateAction = ::handleNavigate,
+                                                            showBackButton = false,
+                                                            extraBottomPadding = if (showBottomBar) 92.dp else 0.dp,
+                                                            onBottomBarVisibilityChange = { bottomBarVisible = it }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    AdaptiveNavBottomBarContainer(
+                                        visible = showBottomBar,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .then(
+                                                if (navigationBarStyle == MiuixNavigationBarStyle.FLOATING) {
+                                                    Modifier.padding(horizontal = 4.dp)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
+                                    ) {
+                                        when (navigationBarStyle) {
+                                            MiuixNavigationBarStyle.NORMAL -> {
+                                                MiuixTopLevelNavigationBar(
+                                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                                    onNavigate = { destination ->
+                                                        scope.launch {
+                                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
+                                                        }
+                                                    }
+                                                )
+                                            }
+
+                                            MiuixNavigationBarStyle.FLOATING -> {
+                                                MiuixTopLevelFloatingNavigationBar(
+                                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                                    onNavigate = { destination ->
+                                                        scope.launch {
+                                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
+                                                        }
+                                                    }
+                                                )
+                                            }
+
+                                            MiuixNavigationBarStyle.LIQUID -> {
+                                                MiuixTopLevelLiquidGlassNavigationBar(
+                                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                                    onNavigate = { destination ->
+                                                        scope.launch {
+                                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
+                                                        }
+                                                    },
+                                                    backdrop = liquidBackdrop
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    MiuixSnackbarHost(
+                                        state = snackbarHostState,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = if (showBottomBar) 82.dp else 16.dp),
+                                        content = { data -> MiuixBlurSnackbar(data = data) }
+                                    )
+
+                                    if (updateReleaseInfo != null) {
+                                        MiuixUpdateDialog(
+                                            show = true,
+                                            releaseInfo = updateReleaseInfo!!,
+                                            onDismiss = { updateReleaseInfo = null },
+                                            onIgnore = { version ->
+                                                UpdateChecker.setIgnoredVersion(this@MainActivity, version)
+                                                AppLogger.getInstance().log("Update", "Ignored version: $version")
+                                            }
+                                        )
+                                    }
+                                },
+                                pageContent = { page ->
+                                    MiuixAppPage(
+                                        page = page,
+                                        onBack = ::popPage,
+                                        onPushPage = ::pushPage,
+                                        onNavigate = ::handleNavigate
+                                    )
+                                }
+                            )
+                        }
                     }
-                )
                 }
             }
         }
+    }
 
     private fun maybeHandleUpdateSnackbarIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_SHOW_DEBUG_UPDATE_SNACKBAR, false) != true) return
@@ -923,28 +1185,30 @@ class MainActivity : BaseActivity() {
         page: AppPage,
         onBack: () -> Unit,
         onPushPage: (AppPage) -> Unit,
-        onNavigate: (SettingsSearchAction.Navigate) -> Unit
+        onNavigate: (SettingsSearchAction.Navigate) -> Unit,
+        showBackButton: Boolean = true,
     ) {
         when (page) {
             is AppPage.LyricsPlayback -> Unit
             is AppPage.CustomSettings -> AppUiScreen(
-                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate
+                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate, showBackButton = showBackButton
             )
             is AppPage.CapsuleNotification -> CapsuleNotificationScreen(
                 onBack = onBack, initialTab = page.initialTab, targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
+                onNavigate = onNavigate, showBackButton = showBackButton
             )
             is AppPage.DesktopLyrics -> DesktopLyricsScreen(
-                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate
+                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate, showBackButton = showBackButton
             )
-            AppPage.Community -> CommunityScreen(onBack = onBack)
+            AppPage.Community -> CommunityScreen(onBack = onBack, showBackButton = showBackButton)
             AppPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
+                showBackButton = showBackButton,
                 onOpenDirectory = { uri, name ->
                     onPushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                 }
             )
-            AppPage.Faq -> FAQScreen(onBack = onBack)
+            AppPage.Faq -> FAQScreen(onBack = onBack, showBackButton = showBackButton)
             AppPage.About -> AboutScreen(
                 updateVersionText = getVersionNameForUi(),
                 updateCodenameText = BuildConfig.VERSION_CODENAME,
@@ -959,26 +1223,30 @@ class MainActivity : BaseActivity() {
                     AppLogger.getInstance().log("Update", "Ignored version: $version")
                 },
                 releaseLookupMessage = aboutReleaseLookupMessage,
-                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null }
+                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null },
+                showBackButton = showBackButton,
             )
             AppPage.Diagnostics -> DiagnosticsScreen(
                 onBack = onBack,
-                onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
+                onOpenLogViewer = { onPushPage(AppPage.LogViewer) },
+                showBackButton = showBackButton,
             )
-            AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
-            AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
-            AppPage.AppleMusic -> AppleMusicSettingsScreen(onBack = onBack)
-            AppPage.ParserRules -> ParserRuleScreen(onBack = onBack)
-            AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
+            AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.AppleMusic -> AppleMusicSettingsScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.ParserRules -> ParserRuleScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack, showBackButton = showBackButton)
             is AppPage.Lab -> LabScreen(
                 onBack = onBack, targetItemKey = page.targetItemKey,
-                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) }
+                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) },
+                showBackButton = showBackButton,
             )
-            AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
+            AppPage.LogViewer -> LogViewerScreen(onBack = onBack, showBackButton = showBackButton)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
-                onBack = onBack
+                onBack = onBack,
+                showBackButton = showBackButton,
             )
             is AppPage.ParserRuleEditor -> {
                 val context = LocalContext.current
@@ -996,6 +1264,7 @@ class MainActivity : BaseActivity() {
                     initialRule = existingRule,
                     isNewRule = !page.isTemplate && (page.packageName.isNullOrBlank() || ParserRuleHelper.loadRules(context).none { it.packageName == page.packageName }),
                     isTemplate = page.isTemplate,
+                    showBackButton = showBackButton,
                     onBack = onBack,
                     onDelete = { rule ->
                         if (page.isTemplate) {
@@ -1033,7 +1302,8 @@ class MainActivity : BaseActivity() {
         page: AppPage,
         onBack: () -> Unit,
         onPushPage: (AppPage) -> Unit,
-        onNavigate: (SettingsSearchAction.Navigate) -> Unit
+        onNavigate: (SettingsSearchAction.Navigate) -> Unit,
+        showBackButton: Boolean = true,
     ) {
         when (page) {
             is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(
@@ -1044,27 +1314,31 @@ class MainActivity : BaseActivity() {
             is AppPage.CustomSettings -> MiuixAppUiScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
+                onNavigate = onNavigate,
+                showBackButton = showBackButton,
             )
             is AppPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(
                 onBack = onBack,
                 initialTab = page.initialTab,
                 targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
+                onNavigate = onNavigate,
+                showBackButton = showBackButton,
             )
             is AppPage.DesktopLyrics -> MiuixDesktopLyricsScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
+                onNavigate = onNavigate,
+                showBackButton = showBackButton,
             )
-            AppPage.Community -> MiuixCommunityScreen(onBack = onBack)
+            AppPage.Community -> MiuixCommunityScreen(onBack = onBack, showBackButton = showBackButton)
             AppPage.LocalLyricDirectories -> MiuixLocalLyricDirectoriesScreen(
                 onBack = onBack,
+                showBackButton = showBackButton,
                 onOpenDirectory = { uri, name ->
                     onPushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                 }
             )
-            AppPage.Faq -> MiuixFAQScreen(onBack = onBack)
+            AppPage.Faq -> MiuixFAQScreen(onBack = onBack, showBackButton = showBackButton)
             AppPage.About -> MiuixAboutScreen(
                 updateVersionText = getVersionNameForUi(),
                 updateCodenameText = BuildConfig.VERSION_CODENAME,
@@ -1079,29 +1353,34 @@ class MainActivity : BaseActivity() {
                     AppLogger.getInstance().log("Update", "Ignored version: $version")
                 },
                 releaseLookupMessage = aboutReleaseLookupMessage,
-                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null }
+                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null },
+                showBackButton = showBackButton,
             )
             AppPage.Diagnostics -> MiuixDiagnosticsScreen(
                 onBack = onBack,
-                onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
+                onOpenLogViewer = { onPushPage(AppPage.LogViewer) },
+                showBackButton = showBackButton,
             )
-            AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
-            AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
-            AppPage.AppleMusic -> MiuixAppleMusicSettingsScreen(onBack = onBack)
+            AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack, showBackButton = showBackButton)
+            AppPage.AppleMusic -> MiuixAppleMusicSettingsScreen(onBack = onBack, showBackButton = showBackButton)
             AppPage.ParserRules -> MiuixParserRuleScreen(
                 onBack = onBack,
+                showBackButton = showBackButton,
                 onOpenFaq = { onPushPage(AppPage.Faq) },
             )
-            AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
+            AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack, showBackButton = showBackButton)
             is AppPage.Lab -> MiuixLabScreen(
                 onBack = onBack, targetItemKey = page.targetItemKey,
-                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) }
+                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) },
+                showBackButton = showBackButton,
             )
-            AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
+            AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack, showBackButton = showBackButton)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
-                onBack = onBack
+                onBack = onBack,
+                showBackButton = showBackButton,
             )
             is AppPage.ParserRuleEditor -> {
                 val context = LocalContext.current
@@ -1119,6 +1398,7 @@ class MainActivity : BaseActivity() {
                     initialRule = existingRule,
                     isNewRule = !page.isTemplate && (page.packageName.isNullOrBlank() || ParserRuleHelper.loadRules(context).none { it.packageName == page.packageName }),
                     isTemplate = page.isTemplate,
+                    showBackButton = showBackButton,
                     onBack = onBack,
                     onDelete = { rule ->
                         if (page.isTemplate) {
@@ -1152,11 +1432,41 @@ class MainActivity : BaseActivity() {
     }
 }
 
-internal class LyricsPlaybackNavigationState : ViewModel() {
-    var start: LyricsPlaybackStart? = null
+internal class MainNavigationViewModel : ViewModel() {
+    val pageStack = androidx.compose.runtime.mutableStateListOf<AppPage>()
+    var selectedSettingsDetail by mutableStateOf<AppPage?>(null)
+    val settingsDetailSubStack = mutableStateListOf<AppPage>()
+    var selectedParserRuleKey by mutableStateOf<String?>(null)
+
+    fun sanitizeRestoredTransitions() {
+        for (i in pageStack.indices) {
+            val page = pageStack[i]
+            if (page is AppPage.LyricsPlayback && page.expansion != null) {
+                pageStack[i] = page.copy(expansion = null)
+            }
+        }
+    }
 }
 
-private sealed class AppPage {
+private fun AppPage.toSettingsDetailTarget(): SettingsNavigationTarget? = when (this) {
+    is AppPage.CapsuleNotification -> SettingsNavigationTarget.CAPSULE_NOTIFICATION
+    is AppPage.CustomSettings -> SettingsNavigationTarget.APP_UI
+    is AppPage.DesktopLyrics -> SettingsNavigationTarget.DESKTOP_LYRICS
+    AppPage.Community -> SettingsNavigationTarget.COMMUNITY
+    AppPage.LocalLyricDirectories, is AppPage.LocalLyricDirectory -> SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES
+    AppPage.Faq -> SettingsNavigationTarget.FAQ
+    AppPage.About -> SettingsNavigationTarget.ABOUT
+    AppPage.Diagnostics, AppPage.LogViewer -> SettingsNavigationTarget.DIAGNOSTICS
+    AppPage.OnlineLyricDebug -> SettingsNavigationTarget.ONLINE_LYRIC_REMATCH
+    AppPage.LastFm -> SettingsNavigationTarget.LAST_FM
+    AppPage.AppleMusic -> SettingsNavigationTarget.APPLE_MUSIC
+    AppPage.ParserRules, is AppPage.ParserRuleEditor -> SettingsNavigationTarget.PARSER_RULES
+    AppPage.CacheManagement -> SettingsNavigationTarget.CACHE_MANAGEMENT
+    is AppPage.Lab -> SettingsNavigationTarget.LAB
+    is AppPage.LyricsPlayback -> null
+}
+
+internal sealed class AppPage {
     data class LyricsPlayback(val expansion: PageExpansion?, val start: LyricsPlaybackStart) : AppPage()
     data class CustomSettings(val targetItemKey: String? = null) : AppPage()
     data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : AppPage()
@@ -1201,5 +1511,22 @@ private fun SettingsSearchAction.Navigate.toAppPage(): AppPage? = when (target) 
     SettingsNavigationTarget.LAB -> AppPage.Lab(targetItemKey)
     SettingsNavigationTarget.PARSER_RULES -> AppPage.ParserRules
 }
+
+@Composable
+private fun AdaptiveNavBottomBarContainer(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        modifier = modifier,
+    ) {
+        content()
+    }
+}
+
 
 

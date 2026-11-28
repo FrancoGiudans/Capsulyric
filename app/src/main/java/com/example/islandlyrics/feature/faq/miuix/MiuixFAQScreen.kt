@@ -41,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
+import com.example.islandlyrics.ui.adaptive.adaptiveContentPadding
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
@@ -55,7 +57,10 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
 @Composable
-fun MiuixFAQScreen(onBack: () -> Unit) {
+fun MiuixFAQScreen(
+    onBack: () -> Unit,
+    showBackButton: Boolean = true,
+) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
@@ -94,7 +99,8 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
                     QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error)),
                     QAItem(context.resources.getText(R.string.faq_q_how_to_diagnostics), context.resources.getText(R.string.faq_a_how_to_diagnostics)),
                     QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap)),
-                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation))
+                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation)),
+                    QAItem(context.resources.getText(R.string.faq_q_lyricon_core_service), context.resources.getText(R.string.faq_a_lyricon_core_service))
                 )
             ),
             FAQCategory(
@@ -114,31 +120,47 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
                 largeTitle = stringResource(R.string.faq_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        MiuixBackIcon(contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            MiuixBackIcon(contentDescription = "Back")
+                        }
                     }
                 }
             )
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp
-            )
-        ) {
-            faqData.forEach { category ->
-                item {
-                    SmallTitle(text = category.title)
-                }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        category.items.forEach { qa ->
-                            MiuixFAQItem(question = qa.question, answer = qa.answer)
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layoutInfo = LocalAppWindowLayout.current
+            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            val singlePaneHorizontalExtra = if (
+                layoutInfo.maxReadableWidth != androidx.compose.ui.unit.Dp.Unspecified &&
+                maxWidth > layoutInfo.maxReadableWidth
+            ) {
+                (maxWidth - layoutInfo.maxReadableWidth) / 2
+            } else {
+                0.dp
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = padding.adaptiveContentPadding(
+                    layoutDirection = layoutDirection,
+                    extraStart = singlePaneHorizontalExtra,
+                    extraEnd = singlePaneHorizontalExtra,
+                    extraBottom = 24.dp,
+                )
+            ) {
+                faqData.forEach { category ->
+                    item {
+                        SmallTitle(text = category.title)
+                    }
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                            category.items.forEach { qa ->
+                                MiuixFAQItem(question = qa.question, answer = qa.answer)
+                            }
                         }
                     }
                 }

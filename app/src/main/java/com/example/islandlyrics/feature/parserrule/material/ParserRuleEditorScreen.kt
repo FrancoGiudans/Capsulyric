@@ -23,6 +23,7 @@
 package com.example.islandlyrics.feature.parserrule.material
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -90,12 +91,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.adaptive.LocalAppWindowLayout
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.rules.FieldOrder
@@ -124,9 +128,12 @@ fun ParserRuleEditorScreen(
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
     onSaved: (ParserRule) -> Unit,
-    onOpenFaq: (() -> Unit)? = null
+    onOpenFaq: (() -> Unit)? = null,
+    showBackButton: Boolean = true,
 ) {
     val context = LocalContext.current
+    val layoutInfo = LocalAppWindowLayout.current
+    val layoutDirection = LocalLayoutDirection.current
     val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
@@ -210,12 +217,16 @@ fun ParserRuleEditorScreen(
                         }
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        onBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(onClick = {
+                            onBack()
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
+                } else {
+                    null
                 },
                 actions = {
                     IconButton(onClick = {
@@ -248,11 +259,20 @@ fun ParserRuleEditorScreen(
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = layoutInfo.maxReadableWidth)
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection) + 16.dp,
+                    end = padding.calculateEndPadding(layoutDirection) + 16.dp
+                )
         ) {
             Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             Spacer(modifier = Modifier.height(8.dp))
@@ -312,6 +332,7 @@ fun ParserRuleEditorScreen(
             }
             Spacer(modifier = Modifier.height(24.dp))
             Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
+        }
         }
     }
 
@@ -633,6 +654,7 @@ fun MaterialLyriconSourceConfigPage(
     onStateChange: (ParserRuleEditorState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         Spacer(modifier = Modifier.height(8.dp))
         SourceCard {
@@ -648,6 +670,34 @@ fun MaterialLyriconSourceConfigPage(
                 checked = state.receiveLyriconRomanization,
                 onCheckedChange = { onStateChange(state.copy(receiveLyriconRomanization = it)) }
             )
+        }
+        SourceCard {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        try {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/tomakino/lyricon/releases/tag/core")
+                                )
+                            )
+                        } catch (_: Exception) {
+                        }
+                    }
+            ) {
+                Text(
+                    text = stringResource(R.string.parser_lyricon_core_service_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.parser_lyricon_core_service_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(modifier = Modifier.height(24.dp))
     }

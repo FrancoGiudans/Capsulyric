@@ -79,6 +79,7 @@ The self-wrapped controls below are **modified from or built on** the correspond
 | --- | --- |
 | Project / 项目 | [WXRIW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) |
 | License / 协议 | Apache License 2.0 — full text / 全文见 [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt) |
+| Version / 版本 | 0.2.1 |
 | Copyright / 版权 | Copyright (C) WXRIW/Lyricify-Lyrics-Helper contributors |
 
 The files below are **ported from** Lyricify-Lyrics-Helper (C# → Kotlin) as part of the online lyric retrieval pipeline. Each file carries the header `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` plus this project's GPL-3.0 file header.
@@ -91,9 +92,13 @@ The files below are **ported from** Lyricify-Lyrics-Helper (C# → Kotlin) as pa
 | `lyrics/online/crypto/NeteaseEapiCrypto.kt` | 网易云 EAPI 加密 / NetEase EAPI encryption | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/crypto/QqQrcDecrypter.kt` | QQ 音乐 QRC 解密 / QQ Music QRC decryption | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/crypto/QqLyricPayloadDecoder.kt` | QQ 音乐歌词负载解码 / QQ Music lyric payload decoding | 移植 (ported, C#→Kotlin) |
+| `lyrics/online/parser/LyricChineseNormalizer.kt` | 繁简字符转换映射 / Traditional-to-Simplified normalization | 移植 (ported, C#→Kotlin) |
+| `lyrics/online/parser/OnlineLyricDuetAligner.kt` | 对唱与 TTML agent 对齐 / duet & TTML agent alignment | 改编 (adapted, C#→Kotlin) |
+| `lyrics/online/parser/OnlineLyricInfoFilter.kt` | 演职员与版权信息行过滤 / credit & info line filter | 改编 (adapted, C#→Kotlin) |
 | `lyrics/online/parser/OnlineLyricParser.kt` | 在线歌词解析入口 / online lyric parser entry | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/parser/OnlineLyricSidecarMerger.kt` | sidecar 歌词合并 / sidecar lyric merging | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/parser/QrcParser.kt` | QRC 歌词格式解析 / QRC lyric format parsing | 移植 (ported, C#→Kotlin) |
+| `lyrics/online/parser/TtmlParser.kt` | Apple Music TTML（含翻译与多语言注音）解析 / TTML & pronunciation parsing | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/parser/YrcParser.kt` | YRC 歌词格式解析 / YRC lyric format parsing | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/parser/MusixmatchRichsyncParser.kt` | Musixmatch Richsync 解析 / Richsync parsing | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/provider/AppleMusicLyricProvider.kt` | Apple Music 歌词提供方 / Apple Music provider | 移植 (ported, C#→Kotlin) |
@@ -102,6 +107,7 @@ The files below are **ported from** Lyricify-Lyrics-Helper (C# → Kotlin) as pa
 | `lyrics/online/provider/MusixmatchLyricProvider.kt` | Musixmatch 歌词提供方 / Musixmatch provider | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/provider/NeteaseLyricProvider.kt` | 网易云歌词提供方 / NetEase provider | 移植 (ported, C#→Kotlin) |
 | `lyrics/online/provider/QqMusicLyricProvider.kt` | QQ 音乐歌词提供方 / QQ Music provider | 移植 (ported, C#→Kotlin) |
+| `lyrics/online/provider/SodaMusicLyricProvider.kt` | 汽水音乐歌词提供方 / SodaMusic provider | 移植 (ported, C#→Kotlin) |
 
 ## 4. InstallerX Revived — GPL-3.0
 
@@ -260,10 +266,10 @@ Build toolchain (build-time only, not distributed): Gradle 9.9.1, Android Gradle
 - Files under `ui/miuix` and `ui/material` were audited by comparing their public API signatures and imports against the vendored miuix 0.9.3 source (`OverlayDialog`, `OverlayBottomSheet`, `OverlayDropdownPreference`, `TopAppBar`, `Scaffold`, `MiuixPopupUtils`, `miuix-blur`).
 - Files outside these directories that import `top.yukonga.*` are feature screens that use the miuix library (normal dependency usage), not derived source, and are therefore not listed.
 - 对 `ui/miuix` 与 `ui/material` 下的文件，通过与 miuix 0.9.3 源码（`OverlayDialog`、`OverlayBottomSheet`、`OverlayDropdownPreference`、`TopAppBar`、`Scaffold`、`MiuixPopupUtils`、`miuix-blur`）逐文件比对公开 API 签名与 import 完成审计；目录外引用 `top.yukonga.*` 的文件属于正常使用依赖的页面，不在此列。
-- **§3 Lyricify**: the 15 ported files were identified by the `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` header and cross-checked against the vendored upstream copy in `reference/Lyricify-Lyrics-Helper-master` (local audit reference, not in git).
+- **§3 Lyricify**: the 20 ported/adapted files were identified by their `Lyricify-Lyrics-Helper` attribution header and cross-checked against upstream `WXRIW/Lyricify-Lyrics-Helper` (v0.2.1) and `reference/Lyricify-Lyrics-Helper-master` (local audit reference, not in git).
 - **§4 InstallerX**: the 2 adapted files carry the `// Portions of this file are adapted from InstallerX Revived` header; cross-checked against `reference/InstallerX-Revived-main` (local audit reference, not in git).
 - **§5 hidden-api**: `IConnectivityManager.java` was diffed against the same-named file in `reference/InstallerX-Revived-main/hidden-api` (only comments/blank lines removed); `INetworkManagementService.java` is project-written (no matching upstream file).
-- **§3 Lyricify**：15 个移植文件通过 `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` 文件头识别，并与 `reference/Lyricify-Lyrics-Helper-master` 上游源码副本（本地审计参考，不入 git）交叉核对。
+- **§3 Lyricify**：20 个移植/改编文件通过 `Lyricify-Lyrics-Helper` 署名文件头识别，并与上游 `WXRIW/Lyricify-Lyrics-Helper`（v0.2.1）及 `reference/Lyricify-Lyrics-Helper-master` 本地审计参考副本（不入 git）交叉核对。
 - **§4 InstallerX**：2 个改编文件带 `// Portions of this file are adapted from InstallerX Revived` 文件头，与 `reference/InstallerX-Revived-main`（本地审计参考，不入 git）交叉核对。
 - **§5 hidden-api**：`IConnectivityManager.java` 与 `reference/InstallerX-Revived-main/hidden-api` 同名文件 diff 比对（仅删除注释/空行）；`INetworkManagementService.java` 为项目自写（上游无对应文件）。
 

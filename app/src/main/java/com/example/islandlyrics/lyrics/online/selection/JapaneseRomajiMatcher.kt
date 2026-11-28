@@ -81,6 +81,7 @@ internal object JapaneseRomajiMatcher {
         var result = ascii
             .replace("ltsu", "tsu")
             .replace("xtsu", "tsu")
+            .replace("tch", "cch")
             .replace("sya", "sha")
             .replace("syu", "shu")
             .replace("syo", "sho")
@@ -121,6 +122,10 @@ internal object JapaneseRomajiMatcher {
         var index = 0
         while (index < value.length) {
             val char = value[index]
+            if (char.isWhitespace()) {
+                index++
+                continue
+            }
             if (char.isLetterOrDigit() && !isKana(char)) {
                 result.append(char)
                 index++
@@ -193,7 +198,7 @@ internal object JapaneseRomajiMatcher {
             clazz.getMethod("transliterate", String::class.java)
         }.getOrNull() ?: return@lazy null
 
-        listOf("ja_Latn", "ja-Latn", "Any-Latin; Latin-ASCII")
+        listOf("ja_Latn", "ja-Latn")
             .firstNotNullOfOrNull { id ->
                 runCatching {
                     val instance = factory.invoke(null, id) ?: error("ICU returned no transliterator")
